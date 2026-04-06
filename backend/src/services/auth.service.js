@@ -70,7 +70,7 @@ async function login(credentials) {
   if (!user) {
     return {
       success: false,
-      message: "Invalid email or password."
+      message: "The email or password is incorrect. Please try again."
     };
   }
 
@@ -80,7 +80,7 @@ async function login(credentials) {
   if (!isPasswordMatch) {
     return {
       success: false,
-      message: "Invalid email or password."
+      message: "The email or password is incorrect. Please try again."
     };
   }
 

@@ -3,8 +3,9 @@
 // Sets up the Express server, global middlewares, routes and error handling.
 
 const express = require("express");
+const cors = require("cors");
 // load environment variables:
-const dotenv = require("dotenv");  
+const dotenv = require("dotenv");
 // database connection:
 const connectDB = require("./config/db");
 
@@ -12,7 +13,7 @@ const connectDB = require("./config/db");
 dotenv.config();
 
 // Connect to MongoDB
-connectDB(); 
+connectDB();
 
 // Middlewares
 const logger = require("./middlewares/logger.middleware");
@@ -22,8 +23,10 @@ const errorHandler = require("./middlewares/error.middleware");
 const healthRoutes = require("./routes/health.routes");
 const authRoutes = require("./routes/auth.routes");
 
-
 const app = express();
+
+// Enable CORS for frontend requests
+app.use(cors());
 
 // Parse JSON bodies from incoming requests
 app.use(express.json());
@@ -39,7 +42,7 @@ app.use("/api", authRoutes);
 app.use(errorHandler);
 
 // Start the server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
