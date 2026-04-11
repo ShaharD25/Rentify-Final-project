@@ -6,12 +6,14 @@ Registration logic, form state handling, and backend connection will be added se
 */
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { registerUser } from "../../services/authService";
 
 // Registration form step inside the auth flow.
-export default function RegisterForm({ onRegisterSuccess }) {
+export default function RegisterForm() {
     const nameRegex = /^[A-Za-z]+$/;
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    const navigate = useNavigate();
 
     const [registerForm, setRegisterForm] = useState({
         firstName: "",
@@ -82,16 +84,17 @@ export default function RegisterForm({ onRegisterSuccess }) {
                     securityAnswer: "",
                 });
 
-                // Tell the parent component to move to the role selection step.
-                if (registeredUserId && onRegisterSuccess) {
-                    onRegisterSuccess(registeredUserId);
+                // Store the user id temporarily for the role selection step.
+                if (registeredUserId) {
+                    sessionStorage.setItem("pendingUserId", registeredUserId);
                 }
-            }
-            else {
+
+                // Move to the role selection page after successful registration.
+                navigate("/role-selection");
+            } else {
                 setIsSuccess(false);
                 setRegisterMessage(result.message || "Registration failed");
             }
-
         }
         catch (error) {
             setIsSuccess(false);
@@ -260,8 +263,8 @@ export default function RegisterForm({ onRegisterSuccess }) {
             {registerMessage && (
                 <div
                     className={`rounded-2xl border px-4 py-3 ${isSuccess
-                            ? "bg-green-50 border-green-200"
-                            : "bg-red-50 border-red-200"
+                        ? "bg-green-50 border-green-200"
+                        : "bg-red-50 border-red-200"
                         }`}
                 >
                     <p

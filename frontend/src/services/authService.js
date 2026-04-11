@@ -32,3 +32,16 @@ export async function registerUser(registerData) {
   const data = await response.json();
   return data;
 }
+
+export async function saveUserRole(roleData) {
+  const response = await fetch(`${API_BASE_URL}/role`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(roleData),
+  });
+
+  const data = await response.json();
+  return data;
+}
