@@ -10,7 +10,9 @@ function App() {
       setShowSplash(false);
     }, 2000);
 
+
     return () => clearTimeout(timer);
+    
   }, []);
 
   return showSplash ? <Splash /> : <Auth />;
