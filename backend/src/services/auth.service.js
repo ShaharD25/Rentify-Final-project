@@ -50,6 +50,9 @@ async function signup(userData) {
   return {
     success: true,
     message: "User registered successfully!"
+    ,user: {
+      id: newUser._id
+    }
   };
 }
 
