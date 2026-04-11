@@ -99,4 +99,33 @@ async function login(credentials) {
   };
 }
 
-module.exports = { signup, login };
+/*
+Handles user role selection logic.
+Updates the selected role for an existing user.
+*/
+async function updateUserRole(roleData) {
+  const { userId, role } = roleData;
+
+  const user = await User.findById(userId);
+
+  if (!user) {
+    return {
+      success: false,
+      message: "User not found."
+    };
+  }
+
+  user.role = role;
+  await user.save();
+
+  return {
+    success: true,
+    message: "User role updated successfully.",
+    user: {
+      id: user._id,
+      role: user.role
+    }
+  };
+}
+
+module.exports = { signup, login, updateUserRole };

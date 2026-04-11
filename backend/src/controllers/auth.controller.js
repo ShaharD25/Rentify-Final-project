@@ -70,4 +70,30 @@ async function login(req, res) {
   return res.status(result.success ? 200 : 401).json(result);
 }
 
-module.exports = { signup, login };
+
+/*
+Role selection controller:
+Receives the selected role and updates it for the matching user.
+*/
+async function updateUserRole(req, res) {
+  const { userId, role } = req.body;
+
+  if (!userId || !role) {
+    return res.status(400).json({
+      message: "User id and role are required"
+    });
+  }
+
+  if (!["homeowner", "renter"].includes(role)) {
+    return res.status(400).json({
+      message: "Invalid role selected"
+    });
+  }
+
+  const result = await authService.updateUserRole({ userId, role });
+
+  return res.status(result.success ? 200 : 404).json(result);
+}
+
+
+module.exports = { signup, login, updateUserRole }; 

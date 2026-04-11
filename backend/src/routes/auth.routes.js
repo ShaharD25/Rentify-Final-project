@@ -4,8 +4,7 @@ console.log("AUTH ROUTES FILE LOADED - V2");
 
 const express = require("express");
 const router = express.Router();
-const { signup, login } = require("../controllers/auth.controller");
-
+const { signup, login, updateUserRole } = require("../controllers/auth.controller");
 /*
 Signup route
 POST /api/auth/signup
@@ -17,5 +16,11 @@ Login route
 POST /api/auth/login
 */
 router.post("/auth/login", login);
+
+/*
+Role selection route
+PUT /api/auth/role
+*/
+router.put("/auth/role", updateUserRole);
 
 module.exports = router;

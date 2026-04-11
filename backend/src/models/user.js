@@ -6,11 +6,7 @@ This file defines the User model.
 A model describes how user data looks and how it is saved in the database.
 */
 
-/*
-This regex allows ONLY English letters (A-Z, a-z).
-No numbers, no symbols.
-Used for first name and last name validation.
-*/
+
 const nameRegex = /^[A-Za-z]+$/;
 
 /*
@@ -68,6 +64,13 @@ const userSchema = new mongoose.Schema(
     securityAnswer: {
       type: String,
       required: true
+    },
+
+    // User role in the system
+    role: {
+      type: String,
+      enum: ["homeowner", "renter"],
+      default: null
     }
 
     // User role (owner / renter) will be added later
