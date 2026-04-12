@@ -95,5 +95,72 @@ async function updateUserRole(req, res) {
   return res.status(result.success ? 200 : 404).json(result);
 }
 
+/*
+Forgot password controller:
+Receives an email and returns the user's security question.
+*/
+async function getSecurityQuestion(req, res) {
+  const { email } = req.body;
 
-module.exports = { signup, login, updateUserRole }; 
+  if (!email) {
+    return res.status(400).json({
+      message: "Email is required"
+    });
+  }
+
+  const result = await authService.getSecurityQuestion(email);
+
+  return res.status(result.success ? 200 : 404).json(result);
+}
+
+/*
+Verify security answer controller:
+Checks whether the provided answer matches the saved answer.
+*/
+async function verifySecurityAnswer(req, res) {
+  const { email, securityAnswer } = req.body;
+
+  if (!email || !securityAnswer) {
+    return res.status(400).json({
+      message: "Email and security answer are required"
+    });
+  }
+
+  const result = await authService.verifySecurityAnswer({
+    email,
+    securityAnswer
+  });
+
+  return res.status(result.success ? 200 : 401).json(result);
+}
+
+/*
+Reset password controller:
+Receives a new password and updates it for the matching user.
+*/
+async function resetPassword(req, res) {
+  const { email, newPassword, confirmPassword } = req.body;
+
+  if (!email || !newPassword || !confirmPassword) {
+    return res.status(400).json({
+      message: "Email, new password, and confirmation are required"
+    });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({
+      message: "Password and confirmation do not match"
+    });
+  }
+
+  const result = await authService.resetPassword({
+    email,
+    newPassword
+  });
+
+  return res.status(result.success ? 200 : 400).json(result);
+}
+
+module.exports = { signup, login, updateUserRole, getSecurityQuestion ,verifySecurityAnswer,
+  resetPassword  }; 
+  

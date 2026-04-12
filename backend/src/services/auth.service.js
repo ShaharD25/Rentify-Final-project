@@ -94,7 +94,8 @@ async function login(credentials) {
       id: user._id,
       firstName: user.firstName,
       lastName: user.lastName,
-      email: user.email
+      email: user.email,
+      role: user.role
     }
   };
 }
@@ -128,4 +129,94 @@ async function updateUserRole(roleData) {
   };
 }
 
-module.exports = { signup, login, updateUserRole };
+/*
+Get the security question for a user by email.
+*/
+async function getSecurityQuestion(email) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user) {
+    return {
+      success: false,
+      message: "No account was found for this email."
+    };
+  }
+
+  return {
+    success: true,
+    securityQuestion: user.securityQuestion
+  };
+}
+
+/*
+Verify the user's answer to the security question.
+*/
+async function verifySecurityAnswer(answerData) {
+  const { email, securityAnswer } = answerData;
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user) {
+    return {
+      success: false,
+      message: "No account was found for this email."
+    };
+  }
+
+  const isAnswerMatch = await bcrypt.compare(
+    securityAnswer,
+    user.securityAnswer
+  );
+
+  if (!isAnswerMatch) {
+    return {
+      success: false,
+      message: "Incorrect answer. Please try again."
+    };
+  }
+
+  return {
+    success: true,
+    message: "Answer verified successfully."
+  };
+}
+
+/*
+Reset the user's password after successful identity verification.
+*/
+async function resetPassword(resetData) {
+  const { email, newPassword } = resetData;
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user) {
+    return {
+      success: false,
+      message: "No account was found for this email."
+    };
+  }
+
+  // Prevent using the current password again.
+const isSamePassword = await bcrypt.compare(newPassword, user.password);
+
+if (isSamePassword) {
+  return {
+    success: false,
+    message: "The new password must be different from the current password."
+  };
+}
+
+  user.password = newPassword;
+  await user.save();
+
+  return {
+    success: true,
+    message: "Password updated successfully."
+  };
+}
+
+module.exports = { signup, login, updateUserRole, getSecurityQuestion, verifySecurityAnswer, resetPassword };
