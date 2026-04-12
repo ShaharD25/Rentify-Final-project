@@ -33,6 +33,8 @@ export async function registerUser(registerData) {
   return data;
 }
 
+
+// Send the selected user role to the backend.
 export async function saveUserRole(roleData) {
   const response = await fetch(`${API_BASE_URL}/role`, {
     method: "PUT",
@@ -40,6 +42,48 @@ export async function saveUserRole(roleData) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(roleData),
+  });
+
+  const data = await response.json();
+  return data;
+}
+
+// Request the security question for the given email.
+export async function getSecurityQuestionByEmail(emailData) {
+  const response = await fetch(`${API_BASE_URL}/forgot-password/question`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(emailData),
+  });
+
+  const data = await response.json();
+  return data;
+}
+
+// Verify the answer to the user's security question.
+export async function verifySecurityAnswer(answerData) {
+  const response = await fetch(`${API_BASE_URL}/forgot-password/verify-answer`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(answerData),
+  });
+
+  const data = await response.json();
+  return data;
+}
+
+// Send the new password to the backend after successful verification.
+export async function resetUserPassword(passwordData) {
+  const response = await fetch(`${API_BASE_URL}/forgot-password/reset`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(passwordData),
   });
 
   const data = await response.json();

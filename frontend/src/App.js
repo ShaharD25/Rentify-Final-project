@@ -1,9 +1,17 @@
+/*
+Main application component.
+Defines the main page routes of the app using React Router.
+*/
+
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import Splash from "./pages/splash";
 import Auth from "./pages/auth";
 import RoleSelection from "./pages/RoleSelection";
+import ForgotPassword from "./pages/ForgotPassword";
+import HomeownerHome from "./pages/HomeownerHome";
 
+// Show the splash screen first, then move to the auth page.
 function SplashRedirect() {
   const navigate = useNavigate();
 
@@ -18,13 +26,6 @@ function SplashRedirect() {
   return <Splash />;
 }
 
-function HomeownerHome() {
-  return (
-    <div className="min-h-screen bg-[#FFE8D6] flex items-center justify-center">
-      <h1 className="text-3xl font-bold text-gray-900">Homeowner Home</h1>
-    </div>
-  );
-}
 
 function RenterHome() {
   return (
@@ -43,6 +44,7 @@ function App() {
         <Route path="/role-selection" element={<RoleSelection />} />
         <Route path="/homeowner" element={<HomeownerHome />} />
         <Route path="/renter" element={<RenterHome />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
       </Routes>
     </BrowserRouter>
   );

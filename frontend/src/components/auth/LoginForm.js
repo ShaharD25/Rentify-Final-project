@@ -6,7 +6,7 @@ Uses the authentication service to send login requests.
 */
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../../services/authService";
 
 export default function LoginForm() {
@@ -29,7 +29,7 @@ export default function LoginForm() {
 
             if (result.success) {
                 const userRole = result.user?.role;
-
+                sessionStorage.setItem("firstName", result.user.firstName);
                 if (userRole === "homeowner") {
                     navigate("/homeowner");
                 } else if (userRole === "renter") {
@@ -104,13 +104,12 @@ export default function LoginForm() {
                     Remember me
                 </label>
 
-                <button
-                    type="button"
+                <Link
+                    to="/forgot-password"
                     className="font-medium text-[#FF8A00] hover:text-[#E67C00] transition"
-                    disabled={isLoading}
                 >
                     Forgot password?
-                </button>
+                </Link>
             </div>
 
             <button
