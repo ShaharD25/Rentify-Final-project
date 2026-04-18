@@ -26,10 +26,21 @@ export default function LoginForm() {
 
         try {
             const result = await loginUser(loginForm);
+            console.log("Full login result:", result);
+            console.log("Login user object:", result.user);
 
             if (result.success) {
+                // Store the logged-in user data for the next protected app flows.
                 const userRole = result.user?.role;
+                const userId = result.user?.id;
+                console.log("userId from login:", userId);
+                console.log("userRole from login:", userRole);
+                sessionStorage.setItem("userId", userId);
+                sessionStorage.setItem("role", userRole);
                 sessionStorage.setItem("firstName", result.user.firstName);
+                console.log("stored userId:", sessionStorage.getItem("userId"));
+                console.log("stored role:", sessionStorage.getItem("role"));
+                console.log("stored firstName:", sessionStorage.getItem("firstName"));
                 if (userRole === "homeowner") {
                     navigate("/homeowner");
                 } else if (userRole === "renter") {

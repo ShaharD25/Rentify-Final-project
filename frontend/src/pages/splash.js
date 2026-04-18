@@ -1,4 +1,4 @@
-import logo from "../assets/orange-logo.png";
+import logo from "../images/orange-logo.png";
 
 export default function Splash() {
   return (

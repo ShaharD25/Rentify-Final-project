@@ -13,6 +13,8 @@ import { registerUser } from "../../services/authService";
 export default function RegisterForm() {
     const nameRegex = /^[A-Za-z]+$/;
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+    // Navigate to the next page after successful registration.
     const navigate = useNavigate();
 
     const [registerForm, setRegisterForm] = useState({
@@ -88,6 +90,9 @@ export default function RegisterForm() {
                 if (registeredUserId) {
                     sessionStorage.setItem("pendingUserId", registeredUserId);
                 }
+
+                // Store the first name for the next onboarding step.
+                sessionStorage.setItem("firstName", registerForm.firstName);
 
                 // Move to the role selection page after successful registration.
                 navigate("/role-selection");

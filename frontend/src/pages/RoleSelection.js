@@ -51,6 +51,9 @@ export default function RoleSelection() {
       });
 
       if (result.success) {
+        // Store the selected user session after successful role setup.
+        sessionStorage.setItem("userId", pendingUserId);
+        sessionStorage.setItem("role", selectedRole);
         // Clear the temporary user id after successful role selection.
         sessionStorage.removeItem("pendingUserId");
 
@@ -69,74 +72,72 @@ export default function RoleSelection() {
     }
   }
 
-return (
-  <div className="min-h-screen bg-[#FFE8D6] flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
-    <div className="w-full max-w-md sm:max-w-2xl">
-      <div className="bg-[#FFF8F3]/90 backdrop-blur-sm rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.06)] border border-orange-100 p-5 sm:p-8">
-        <div className="text-center mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Choose your role
-          </h2>
-          <p className="mt-2 text-sm sm:text-base text-gray-600">
-            Select the role that matches how you will use Rentify
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-          <button
-            type="button"
-            onClick={() => setSelectedRole("homeowner")}
-            className={`rounded-2xl border px-4 py-4 sm:px-5 sm:py-5 text-center transition-all duration-200 ${
-              selectedRole === "homeowner"
-                ? "border-[#FF8A00] bg-orange-100 ring-4 ring-orange-200 shadow-sm"
-                : "border-gray-200 bg-white hover:border-orange-300"
-            }`}
-          >
-            <p className="text-xl sm:text-2xl font-bold text-gray-900">
-              Homeowner
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedRole("renter")}
-            className={`rounded-2xl border px-4 py-4 sm:px-5 sm:py-5 text-center transition-all duration-200 ${
-              selectedRole === "renter"
-                ? "border-[#FF8A00] bg-orange-100 ring-4 ring-orange-200 shadow-sm"
-                : "border-gray-200 bg-white hover:border-orange-300"
-            }`}
-          >
-            <p className="text-xl sm:text-2xl font-bold text-gray-900">
-              Renter
-            </p>
-          </button>
-        </div>
-
-        <div className="mt-4 sm:mt-5 text-center min-h-[24px]">
-          <p className="text-sm sm:text-base text-gray-600 font-medium">
-            {selectedRole === "homeowner" && "Manage properties, renters, and payments."}
-            {selectedRole === "renter" && "Track rent, issues, and property updates."}
-          </p>
-        </div>
-
-        {roleMessage && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
-            <p className="text-sm text-center font-medium text-red-600">
-              {roleMessage}
+  return (
+    <div className="min-h-screen bg-[#FFE8D6] flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
+      <div className="w-full max-w-md sm:max-w-2xl">
+        <div className="bg-[#FFF8F3]/90 backdrop-blur-sm rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.06)] border border-orange-100 p-5 sm:p-8">
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Choose your role
+            </h2>
+            <p className="mt-2 text-sm sm:text-base text-gray-600">
+              Select the role that matches how you will use Rentify
             </p>
           </div>
-        )}
 
-        <button
-          type="button"
-          onClick={handleContinue}
-          disabled={!selectedRole || isLoading}
-          className="mt-5 sm:mt-6 w-full rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm sm:text-base font-semibold text-white shadow-md transition hover:bg-[#E67C00] focus:outline-none focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {isLoading ? "Saving..." : "Continue"}
-        </button>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+            <button
+              type="button"
+              onClick={() => setSelectedRole("homeowner")}
+              className={`rounded-2xl border px-4 py-4 sm:px-5 sm:py-5 text-center transition-all duration-200 ${selectedRole === "homeowner"
+                  ? "border-[#FF8A00] bg-orange-100 ring-4 ring-orange-200 shadow-sm"
+                  : "border-gray-200 bg-white hover:border-orange-300"
+                }`}
+            >
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                Homeowner
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedRole("renter")}
+              className={`rounded-2xl border px-4 py-4 sm:px-5 sm:py-5 text-center transition-all duration-200 ${selectedRole === "renter"
+                  ? "border-[#FF8A00] bg-orange-100 ring-4 ring-orange-200 shadow-sm"
+                  : "border-gray-200 bg-white hover:border-orange-300"
+                }`}
+            >
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                Renter
+              </p>
+            </button>
+          </div>
+
+          <div className="mt-4 sm:mt-5 text-center min-h-[24px]">
+            <p className="text-sm sm:text-base text-gray-600 font-medium">
+              {selectedRole === "homeowner" && "Manage properties, renters, and payments."}
+              {selectedRole === "renter" && "Track rent, issues, and property updates."}
+            </p>
+          </div>
+
+          {roleMessage && (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+              <p className="text-sm text-center font-medium text-red-600">
+                {roleMessage}
+              </p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={!selectedRole || isLoading}
+            className="mt-5 sm:mt-6 w-full rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm sm:text-base font-semibold text-white shadow-md transition hover:bg-[#E67C00] focus:outline-none focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isLoading ? "Saving..." : "Continue"}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 }

@@ -6,20 +6,62 @@ top section, summary cards, and an empty state for properties.
 
 import { useState } from "react";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import houseHomepageImage from "../images/house-homepage.png";
+import { getHomeownerProperties } from "../services/propertyService";
 
 export default function HomeownerHome() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [firstName, setFirstName] = useState("");
-    const properties = [];
+    const [properties, setProperties] = useState([]);
+    const [isLoadingProperties, setIsLoadingProperties] = useState(true);
+    const [propertiesMessage, setPropertiesMessage] = useState("");
+    const navigate = useNavigate();
 
     useEffect(() => {
         const savedFirstName = sessionStorage.getItem("firstName") || "";
         setFirstName(savedFirstName);
     }, []);
 
+    useEffect(() => {
+        async function loadProperties() {
+            const homeownerId = sessionStorage.getItem("userId");
+
+            if (!homeownerId) {
+                setPropertiesMessage("No homeowner session was found. Please sign in again.");
+                setIsLoadingProperties(false);
+                return;
+            }
+
+            try {
+                const result = await getHomeownerProperties(homeownerId);
+
+                if (result.success) {
+                    setProperties(result.properties || []);
+                } else {
+                    setPropertiesMessage(result.message || "Failed to load properties.");
+                }
+            } catch (error) {
+                setPropertiesMessage("Server error. Please try again later.");
+            } finally {
+                setIsLoadingProperties(false);
+            }
+        }
+
+        loadProperties();
+    }, []);
+
     function formatName(name) {
         if (!name) return "";
         return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+    }
+
+    // Clear the current session data and return to the auth page.
+    function handleLogout() {
+        sessionStorage.removeItem("firstName");
+        sessionStorage.removeItem("userId");
+        sessionStorage.removeItem("role");
+        navigate("/auth");
     }
 
     return (
@@ -35,7 +77,7 @@ export default function HomeownerHome() {
             <div className="flex min-h-screen">
                 {/* Sidebar */}
                 <aside
-                    className={`fixed left-0 top-0 z-50 h-full w-72 transform bg-[#FFF8F3]/95 backdrop-blur-sm border-r border-orange-100 shadow-xl transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    className={`fixed left-0 top-0 z-50 flex h-full w-72 transform flex-col bg-[#FFF8F3]/95 backdrop-blur-sm border-r border-orange-100 shadow-xl transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                         }`}
                 >
                     <div className="flex h-20 items-center justify-between border-b border-orange-100 px-6">
@@ -57,7 +99,7 @@ export default function HomeownerHome() {
                         </button>
                     </div>
 
-                    <nav className="px-4 py-6">
+                    <nav className="flex-1 px-4 py-6">
                         <div className="space-y-2">
                             <button className="flex w-full items-center justify-between rounded-2xl bg-[#FF8A00] px-4 py-3 text-left text-sm font-semibold text-white shadow-sm">
                                 <span>Dashboard</span>
@@ -95,6 +137,16 @@ export default function HomeownerHome() {
                             </button>
                         </div>
                     </nav>
+
+                    <div className="px-4 pb-4 mt-auto">
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50"
+                        >
+                            Log out
+                        </button>
+                    </div>
                 </aside>
 
                 {/* Main content */}
@@ -123,6 +175,7 @@ export default function HomeownerHome() {
 
                             <button
                                 type="button"
+                                onClick={() => navigate("/homeowner/properties/new")}
                                 className="hidden rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00] sm:block"
                             >
                                 Add Property
@@ -134,6 +187,7 @@ export default function HomeownerHome() {
                         {/* Mobile Add Property button */}
                         <button
                             type="button"
+                            onClick={() => navigate("/homeowner/properties/new")}
                             className="mb-5 w-full rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00] sm:hidden"
                         >
                             Add Property
@@ -145,11 +199,13 @@ export default function HomeownerHome() {
                                 <p className="text-sm font-medium text-gray-500">
                                     Total properties
                                 </p>
-                                <h3 className="mt-3 text-3xl font-bold text-gray-900">0</h3>
+                                <h3 className="mt-3 text-3xl font-bold text-gray-900">{properties.length}</h3>
                             </div>
 
                             <div className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 shadow-sm">
-                                <p className="text-sm font-medium text-gray-500">Open issues</p>
+                                <p className="text-sm font-medium text-gray-500">
+                                    Open issues
+                                </p>
                                 <h3 className="mt-3 text-3xl font-bold text-gray-900">0</h3>
                             </div>
 
@@ -173,11 +229,23 @@ export default function HomeownerHome() {
                                     </p>
                                 </div>
                             </div>
-
-                            {properties.length === 0 ? (
+                            {isLoadingProperties ? (
+                                <div className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 px-6 py-12 text-center shadow-sm">
+                                    <p className="text-sm font-medium text-gray-600">Loading properties...</p>
+                                </div>
+                            ) : propertiesMessage ? (
+                                <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-12 text-center shadow-sm">
+                                    <p className="text-sm font-medium text-red-600">{propertiesMessage}</p>
+                                </div>
+                            ) : properties.length === 0 ? (
                                 <div className="rounded-3xl border border-dashed border-orange-200 bg-[#FFF8F3]/95 px-6 py-12 text-center shadow-sm">
-                                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-100 text-2xl">
-                                        🏠
+                                    {/* Property illustration placeholder */}
+                                    <div className="mx-auto flex h-20 w-20 items-center justify-center">
+                                        <img
+                                            src={houseHomepageImage}
+                                            alt="Property"
+                                            className="h-20 w-20 object-contain"
+                                        />
                                     </div>
 
                                     <h3 className="mt-4 text-xl font-bold text-gray-900">
@@ -191,6 +259,7 @@ export default function HomeownerHome() {
 
                                     <button
                                         type="button"
+                                        onClick={() => navigate("/homeowner/properties/new")}
                                         className="mt-6 rounded-2xl bg-[#FF8A00] px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00]"
                                     >
                                         Add your first property
@@ -198,7 +267,34 @@ export default function HomeownerHome() {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                                    {/* Property cards will be rendered here later */}
+                                    {properties.map((property) => (
+                                        <button
+                                            key={property._id}
+                                            type="button"
+                                            onClick={() => navigate(`/homeowner/properties/${property._id}`)}
+                                            className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                                            
+                                        >
+                                            <h3 className="text-lg font-bold text-gray-900">
+                                                {property.fullAddress}
+                                            </h3>
+
+                                            <p className="mt-2 text-sm text-gray-600">
+                                                No renters assigned yet
+                                            </p>
+
+                                            <div className="mt-4 space-y-2 text-sm text-gray-600">
+                                                <p>
+                                                    <span className="font-medium text-gray-800">Monthly rent:</span>{" "}
+                                                    ₪{property.monthlyRent}
+                                                </p>
+                                                <p>
+                                                    <span className="font-medium text-gray-800">Billing date:</span>{" "}
+                                                    {property.billingDate}
+                                                </p>
+                                            </div>
+                                        </button>
+                                    ))}
                                 </div>
                             )}
                         </section>

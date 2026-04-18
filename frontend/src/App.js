@@ -10,6 +10,8 @@ import Auth from "./pages/auth";
 import RoleSelection from "./pages/RoleSelection";
 import ForgotPassword from "./pages/ForgotPassword";
 import HomeownerHome from "./pages/HomeownerHome";
+import CreateProperty from "./pages/CreateProperty";
+import PropertyDetails from "./pages/PropertyDetails";
 
 // Show the splash screen first, then move to the auth page.
 function SplashRedirect() {
@@ -25,7 +27,6 @@ function SplashRedirect() {
 
   return <Splash />;
 }
-
 
 function RenterHome() {
   return (
@@ -45,6 +46,8 @@ function App() {
         <Route path="/homeowner" element={<HomeownerHome />} />
         <Route path="/renter" element={<RenterHome />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/homeowner/properties/new" element={<CreateProperty />} />
+        <Route path="/homeowner/properties/:propertyId" element={<PropertyDetails />} />
       </Routes>
     </BrowserRouter>
   );
