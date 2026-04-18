@@ -22,6 +22,7 @@ const errorHandler = require("./middlewares/error.middleware");
 // Routes
 const healthRoutes = require("./routes/health.routes");
 const authRoutes = require("./routes/auth.routes");
+const propertyRoutes = require("./routes/property.routes");
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use(logger);
 // Register API routes
 app.use("/api", healthRoutes);
 app.use("/api", authRoutes);
+app.use("/api", propertyRoutes);
 
 // Global error handler (must be after routes)
 app.use(errorHandler);
