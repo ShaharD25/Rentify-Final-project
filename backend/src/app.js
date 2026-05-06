@@ -4,6 +4,7 @@
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 // load environment variables:
 const dotenv = require("dotenv");
 // database connection:
@@ -23,6 +24,7 @@ const errorHandler = require("./middlewares/error.middleware");
 const healthRoutes = require("./routes/health.routes");
 const authRoutes = require("./routes/auth.routes");
 const propertyRoutes = require("./routes/property.routes");
+const issueRoutes = require("./routes/issue.routes");
 
 const app = express();
 
@@ -32,6 +34,7 @@ app.use(cors());
 // Parse JSON bodies from incoming requests
 app.use(express.json());
 
+
 // Log every incoming request
 app.use(logger);
 
@@ -39,6 +42,7 @@ app.use(logger);
 app.use("/api", healthRoutes);
 app.use("/api", authRoutes);
 app.use("/api", propertyRoutes);
+app.use("/api", issueRoutes);
 
 // Global error handler (must be after routes)
 app.use(errorHandler);
