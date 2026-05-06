@@ -6,7 +6,8 @@ and contract section for one selected property.
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getPropertyById, addRenterToProperty } from "../services/propertyService";
+import { getPropertyById, addRenterToProperty, removeRenterFromProperty, uploadContractToProperty } from "../services/propertyService";
+import API_BASE_URL from "../services/apiConfig";
 
 export default function PropertyDetails() {
     const { propertyId } = useParams();
@@ -19,6 +20,11 @@ export default function PropertyDetails() {
     const [newRenterName, setNewRenterName] = useState("");
     const [renterMessage, setRenterMessage] = useState("");
     const [isSavingRenter, setIsSavingRenter] = useState(false);
+    const [selectedContractFile, setSelectedContractFile] = useState(null);
+    const [contractMessage, setContractMessage] = useState("");
+    const [isUploadingContract, setIsUploadingContract] = useState(false);
+    const [isViewingContract, setIsViewingContract] = useState(false);
+    const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
 
     async function loadPropertyDetails() {
         if (!propertyId) {
@@ -46,6 +52,16 @@ export default function PropertyDetails() {
         loadPropertyDetails();
     }, [propertyId]);
 
+    useEffect(() => {
+        function handleResize() {
+            setIsMobileView(window.innerWidth < 768);
+        }
+
+        window.addEventListener("resize", handleResize);
+
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
     async function handleAddRenter() {
         setRenterMessage("");
 
@@ -60,9 +76,11 @@ export default function PropertyDetails() {
             const result = await addRenterToProperty(propertyId, newRenterName);
 
             if (result.success) {
+                console.log("Updated property from add renter:", result.property);
+                setProperty(result.property);
                 setNewRenterName("");
                 setIsAddingRenter(false);
-                await loadPropertyDetails();
+                setRenterMessage("");
             } else {
                 setRenterMessage(result.message || "Failed to add renter.");
             }
@@ -72,6 +90,76 @@ export default function PropertyDetails() {
             setIsSavingRenter(false);
         }
     }
+
+    async function handleRemoveRenter(renterIndex) {
+        try {
+            const result = await removeRenterFromProperty(propertyId, renterIndex);
+
+            if (result.success) {
+                setProperty(result.property);
+            } else {
+                setRenterMessage(result.message || "Failed to remove renter.");
+            }
+        } catch (error) {
+            setRenterMessage("Server error. Please try again later.");
+        }
+    }
+
+    function handleContractFileChange(event) {
+        const file = event.target.files?.[0];
+        setContractMessage("");
+
+        if (!file) {
+            return;
+        }
+
+        const isPdfMime = file.type === "application/pdf";
+        const isPdfExt = file.name.toLowerCase().endsWith(".pdf");
+
+        if (!isPdfMime || !isPdfExt) {
+            setSelectedContractFile(null);
+            setContractMessage("Only PDF files are allowed.");
+            return;
+        }
+
+        setSelectedContractFile(file);
+    }
+
+    async function handleUploadContract() {
+        setContractMessage("");
+
+        if (!selectedContractFile) {
+            setContractMessage("Please choose a PDF file first.");
+            return;
+        }
+
+        setIsUploadingContract(true);
+
+        try {
+            const uploadedBy = sessionStorage.getItem("firstName") || "Unknown";
+
+            const result = await uploadContractToProperty(
+                propertyId,
+                selectedContractFile,
+                uploadedBy
+            );
+
+            if (result.success) {
+                setProperty(result.property);
+                setSelectedContractFile(null);
+                setContractMessage("");
+            } else {
+                setContractMessage(result.message || "Failed to upload contract.");
+            }
+        } catch (error) {
+            setContractMessage("Server error. Please try again later.");
+        } finally {
+            setIsUploadingContract(false);
+        }
+    }
+
+    const contractViewUrl = `${API_BASE_URL}/properties/${propertyId}/contract/view`;
+
 
     return (
         <div className="min-h-screen bg-[#FFE8D6] px-4 py-6 sm:px-6 sm:py-10">
@@ -89,13 +177,23 @@ export default function PropertyDetails() {
                         </p>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={() => navigate("/homeowner")}
-                        className="w-full rounded-2xl border border-orange-200 bg-[#FFF8F3] px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 sm:w-auto"
-                    >
-                        Back
-                    </button>
+                    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/homeowner/properties/${propertyId}/issues`)}
+                            className="w-full rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00] sm:w-auto"
+                        >
+                            View Issues
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => navigate("/homeowner")}
+                            className="w-full rounded-2xl border border-orange-200 bg-[#FFF8F3] px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 sm:w-auto"
+                        >
+                            Back
+                        </button>
+                    </div>
                 </div>
 
                 {isLoading ? (
@@ -228,7 +326,7 @@ export default function PropertyDetails() {
                                         {property.renters.map((renter, index) => (
                                             <div
                                                 key={`${renter}-${index}`}
-                                                className="flex flex-col gap-4 rounded-2xl border border-orange-300 bg-[#FFE8D1] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                                                className="flex flex-col gap-4 rounded-2xl border border-[#D9DEE8] bg-[#F5F7FA] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
                                             >
 
                                                 <div>
@@ -242,7 +340,8 @@ export default function PropertyDetails() {
 
                                                 <button
                                                     type="button"
-                                                    className="w-full rounded-xl border border-orange-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-orange-50 sm:w-auto"
+                                                    onClick={() => handleRemoveRenter(index)}
+                                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-slate-100 sm:w-auto"
                                                 >
                                                     Remove
                                                 </button>
@@ -269,26 +368,102 @@ export default function PropertyDetails() {
                                             Contract
                                         </h2>
                                         <p className="mt-1 text-sm text-gray-600">
-                                            View or upload the contract file for this property
+                                            Upload, replace, and view the rental contract for this property
                                         </p>
                                     </div>
 
-                                    <button
-                                        type="button"
-                                        className="w-full rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00] sm:w-auto"
-                                    >
-                                        Upload Contract
-                                    </button>
+                                    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                                        <label className="w-full cursor-pointer rounded-2xl border border-orange-200 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 sm:w-auto">
+                                            Choose PDF
+                                            <input
+                                                type="file"
+                                                accept="application/pdf,.pdf"
+                                                onChange={handleContractFileChange}
+                                                className="hidden"
+                                            />
+                                        </label>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleUploadContract}
+                                            disabled={isUploadingContract}
+                                            className="w-full rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+                                        >
+                                            {property.contractFileName
+                                                ? isUploadingContract
+                                                    ? "Replacing..."
+                                                    : "Replace Contract"
+                                                : isUploadingContract
+                                                    ? "Uploading..."
+                                                    : "Upload Contract"}
+                                        </button>
+                                    </div>
                                 </div>
 
-                                {property.contractFileName ? (
-                                    <div className="mt-6 rounded-2xl border border-orange-300 bg-[#FFE8D1] px-5 py-4">
+                                {selectedContractFile && (
+                                    <div className="mt-6 rounded-2xl border border-orange-200 bg-white px-5 py-4">
                                         <p className="text-sm font-medium text-gray-500">
-                                            Current contract file
+                                            Selected file
                                         </p>
                                         <p className="mt-2 font-semibold text-gray-900">
-                                            {property.contractFileName}
+                                            {selectedContractFile.name}
                                         </p>
+                                    </div>
+                                )}
+
+                                {contractMessage && (
+                                    <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+                                        <p className="text-sm font-medium text-red-600">
+                                            {contractMessage}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {property.contractFileName ? (
+                                    <div className="mt-6 space-y-4">
+                                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                                            <p className="text-sm font-medium text-gray-500">
+                                                Current contract file
+                                            </p>
+                                            <p className="mt-2 font-semibold text-gray-900">
+                                                {property.contractFileName}
+                                            </p>
+
+                                            <div className="mt-4 space-y-2 text-sm text-gray-600">
+                                                <p>
+                                                    <span className="font-medium text-gray-800">Uploaded by:</span>{" "}
+                                                    {property.contractUploadedBy || "Unknown"}
+                                                </p>
+                                                <p>
+                                                    <span className="font-medium text-gray-800">Upload date:</span>{" "}
+                                                    {property.contractUploadedAt
+                                                        ? new Date(property.contractUploadedAt).toLocaleString()
+                                                        : "Not available"}
+                                                </p>
+                                            </div>
+
+                                            <div className="mt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsViewingContract((prev) => !prev)}
+                                                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-slate-100"
+                                                >
+                                                    {isViewingContract ? "Hide Contract" : "View Contract"}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {isViewingContract && (
+                                            <div className="mt-4 flex justify-center">
+                                                <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                                    <iframe
+                                                        src={`${contractViewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                                                        title="Property contract"
+                                                        className="h-[700px] w-full"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="mt-6 rounded-2xl border border-dashed border-orange-300 bg-[#FFF7F0] px-5 py-8 text-center">

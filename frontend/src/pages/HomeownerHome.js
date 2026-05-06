@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import houseHomepageImage from "../images/house-homepage.png";
 import { getHomeownerProperties } from "../services/propertyService";
+import { getHomeownerIssues } from "../services/issueService";
 
 export default function HomeownerHome() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -16,6 +17,7 @@ export default function HomeownerHome() {
     const [properties, setProperties] = useState([]);
     const [isLoadingProperties, setIsLoadingProperties] = useState(true);
     const [propertiesMessage, setPropertiesMessage] = useState("");
+    const [openIssuesCount, setOpenIssuesCount] = useState(0);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -40,6 +42,15 @@ export default function HomeownerHome() {
                     setProperties(result.properties || []);
                 } else {
                     setPropertiesMessage(result.message || "Failed to load properties.");
+                }
+
+                const issuesResult = await getHomeownerIssues(homeownerId);
+
+                if (issuesResult.success) {
+                    const activeIssues = (issuesResult.issues || []).filter(
+                        (issue) => issue.status !== "closed"
+                    );
+                    setOpenIssuesCount(activeIssues.length);
                 }
             } catch (error) {
                 setPropertiesMessage("Server error. Please try again later.");
@@ -108,6 +119,15 @@ export default function HomeownerHome() {
 
                             <button className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-orange-50">
                                 <span>Properties</span>
+                                <span>›</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => navigate("/homeowner/issues")}
+                                className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-orange-50"
+                            >
+                                <span>Issues</span>
                                 <span>›</span>
                             </button>
 
@@ -206,7 +226,7 @@ export default function HomeownerHome() {
                                 <p className="text-sm font-medium text-gray-500">
                                     Open issues
                                 </p>
-                                <h3 className="mt-3 text-3xl font-bold text-gray-900">0</h3>
+                                <h3 className="mt-3 text-3xl font-bold text-gray-900">{openIssuesCount}</h3>
                             </div>
 
                             <div className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 shadow-sm">
@@ -273,14 +293,18 @@ export default function HomeownerHome() {
                                             type="button"
                                             onClick={() => navigate(`/homeowner/properties/${property._id}`)}
                                             className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                                            
+
                                         >
                                             <h3 className="text-lg font-bold text-gray-900">
                                                 {property.fullAddress}
                                             </h3>
 
-                                            <p className="mt-2 text-sm text-gray-600">
-                                                No renters assigned yet
+                                            <p className="mt-2 text-sm font-medium text-gray-500">
+                                                {property.renters && property.renters.length > 0
+                                                    ? property.renters.length === 1
+                                                        ? property.renters[0]
+                                                        : `${property.renters.slice(0, -1).join(", ")} and ${property.renters[property.renters.length - 1]}`
+                                                    : "No renters assigned yet"}
                                             </p>
 
                                             <div className="mt-4 space-y-2 text-sm text-gray-600">
