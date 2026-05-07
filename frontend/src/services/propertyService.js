@@ -37,22 +37,73 @@ export async function getHomeownerProperties(homeownerId) {
 
 // Request one property by id for the property details page.
 export async function getPropertyById(propertyId) {
-  const response = await fetch(`${PROPERTY_API_BASE_URL}/${propertyId}`);
+    const response = await fetch(`${PROPERTY_API_BASE_URL}/${propertyId}`);
 
-  const data = await response.json();
-  return data;
+    const data = await response.json();
+    return data;
 }
 
-// Add one renter name to a selected property.
-export async function addRenterToProperty(propertyId, renterName) {
-  const response = await fetch(`${PROPERTY_API_BASE_URL}/${propertyId}/renters`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ renterName }),
-  });
+// Add one renter user to a selected property by email.
+export async function addRenterToProperty(propertyId, renterEmail) {
+    const response = await fetch(`${PROPERTY_API_BASE_URL}/${propertyId}/renters`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ renterEmail }),
+    });
 
-  const data = await response.json();
-  return data;
+    const data = await response.json();
+    return data;
+}
+
+// Remove one renter user from a selected property by id.
+export async function removeRenterFromProperty(propertyId, renterId) {
+    const response = await fetch(`${PROPERTY_API_BASE_URL}/${propertyId}/renters/remove`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ renterId }),
+    });
+
+    const data = await response.json();
+    return data;
+}
+
+// Upload or replace a contract file for a selected property.
+export async function uploadContractToProperty(propertyId, contractFile, uploadedBy) {
+    const formData = new FormData();
+    formData.append("contractFile", contractFile);
+    formData.append("uploadedBy", uploadedBy);
+
+    const response = await fetch(`${PROPERTY_API_BASE_URL}/${propertyId}/contract`, {
+        method: "PUT",
+        body: formData,
+    });
+
+    const data = await response.json();
+    return data;
+}
+
+// Request all properties linked to one renter.
+export async function getRenterProperties(renterId) {
+    const response = await fetch(`${PROPERTY_API_BASE_URL}/renter/${renterId}`);
+
+    const data = await response.json();
+    return data;
+}
+
+// Link a renter to a property using a join code.
+export async function joinPropertyByCode(joinData) {
+    const response = await fetch(`${PROPERTY_API_BASE_URL}/join-by-code`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(joinData),
+    });
+
+    const data = await response.json();
+    return data;
 }

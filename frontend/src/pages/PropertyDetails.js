@@ -250,6 +250,15 @@ export default function PropertyDetails() {
                                         {new Date(property.rentalEndDate).toLocaleDateString()}
                                     </p>
                                 </div>
+
+                                <div className="rounded-2xl border border-[#E7D8C8] bg-[#F6EBDD] p-4">
+                                    <p className="text-sm font-medium text-gray-500">
+                                        Renter join code
+                                    </p>
+                                    <p className="mt-2 text-lg font-bold tracking-wide text-gray-900">
+                                        {property.renterJoinCode || "Not available"}
+                                    </p>
+                                </div>
                             </div>
                         </section>
 

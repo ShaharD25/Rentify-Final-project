@@ -113,6 +113,12 @@ export default function IssueDetails() {
         return category.charAt(0).toUpperCase() + category.slice(1);
     }
 
+    const sortedMessages = issue?.messages
+        ? [...issue.messages].sort(
+            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+        )
+        : [];
+
     return (
         <div className="min-h-screen bg-[#FFE8D6] px-4 py-6 sm:px-6 sm:py-10">
             <div className="mx-auto w-full max-w-5xl">
@@ -240,7 +246,7 @@ export default function IssueDetails() {
 
                             <div className="mt-6 space-y-3">
                                 {issue.messages && issue.messages.length > 0 ? (
-                                    issue.messages.map((message, index) => (
+                                    sortedMessages.map((message, index) => (
                                         <div
                                             key={`${message.senderName}-${message.createdAt}-${index}`}
                                             className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
