@@ -6,7 +6,8 @@ and contract section for one selected property.
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getPropertyById, addRenterToProperty, removeRenterFromProperty, uploadContractToProperty } from "../services/propertyService";
+import { getPropertyById, removeRenterFromProperty, uploadContractToProperty } from "../services/propertyService";
+import { createPropertyInvitation } from "../services/notificationService";
 import API_BASE_URL from "../services/apiConfig";
 
 export default function PropertyDetails() {
@@ -16,10 +17,14 @@ export default function PropertyDetails() {
     const [property, setProperty] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [pageMessage, setPageMessage] = useState("");
+
+
     const [isAddingRenter, setIsAddingRenter] = useState(false);
-    const [newRenterName, setNewRenterName] = useState("");
+    const [inviteRenterEmail, setInviteRenterEmail] = useState("");
     const [renterMessage, setRenterMessage] = useState("");
     const [isSavingRenter, setIsSavingRenter] = useState(false);
+
+
     const [selectedContractFile, setSelectedContractFile] = useState(null);
     const [contractMessage, setContractMessage] = useState("");
     const [isUploadingContract, setIsUploadingContract] = useState(false);
@@ -52,37 +57,61 @@ export default function PropertyDetails() {
         loadPropertyDetails();
     }, [propertyId]);
 
-    useEffect(() => {
-        function handleResize() {
-            setIsMobileView(window.innerWidth < 768);
+    function getRenterUser(renterItem) {
+        return renterItem?.renter || renterItem;
+    }
+
+    function formatRenterName(renterItem) {
+        const renterUser = getRenterUser(renterItem);
+
+        if (!renterUser) {
+            return "Unknown renter";
         }
 
-        window.addEventListener("resize", handleResize);
+        const fullName = `${renterUser.firstName || ""} ${renterUser.lastName || ""}`.trim();
 
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
+        return fullName || renterUser.email || "Unknown renter";
+    }
 
-    async function handleAddRenter() {
+    function formatJoinedAt(renterItem) {
+        if (!renterItem?.joinedAt) {
+            return "Join date not available";
+        }
+
+        return new Date(renterItem.joinedAt).toLocaleDateString();
+    }
+
+
+    async function handleInviteRenter() {
         setRenterMessage("");
 
-        if (!newRenterName.trim()) {
-            setRenterMessage("Renter name is required.");
+        if (!inviteRenterEmail.trim()) {
+            setRenterMessage("Renter email is required.");
+            return;
+        }
+
+        const homeownerId = sessionStorage.getItem("userId");
+
+        if (!homeownerId) {
+            setRenterMessage("No homeowner session was found. Please sign in again.");
             return;
         }
 
         setIsSavingRenter(true);
 
         try {
-            const result = await addRenterToProperty(propertyId, newRenterName);
+            const result = await createPropertyInvitation({
+                homeownerId,
+                propertyId,
+                renterEmail: inviteRenterEmail
+            });
 
             if (result.success) {
-                console.log("Updated property from add renter:", result.property);
-                setProperty(result.property);
-                setNewRenterName("");
+                setInviteRenterEmail("");
                 setIsAddingRenter(false);
-                setRenterMessage("");
+                setRenterMessage("Invitation sent successfully.");
             } else {
-                setRenterMessage(result.message || "Failed to add renter.");
+                setRenterMessage(result.message || "Failed to send invitation.");
             }
         } catch (error) {
             setRenterMessage("Server error. Please try again later.");
@@ -91,9 +120,20 @@ export default function PropertyDetails() {
         }
     }
 
-    async function handleRemoveRenter(renterIndex) {
+
+    async function handleRemoveRenter(renterItem) {
+        const renterUser = getRenterUser(renterItem);
+        const renterId = renterUser?._id;
+
+        if (!renterId) {
+            setRenterMessage("Renter id is missing.");
+            return;
+        }
+
+        setRenterMessage("");
+
         try {
-            const result = await removeRenterFromProperty(propertyId, renterIndex);
+            const result = await removeRenterFromProperty(propertyId, renterId);
 
             if (result.success) {
                 setProperty(result.property);
@@ -251,14 +291,6 @@ export default function PropertyDetails() {
                                     </p>
                                 </div>
 
-                                <div className="rounded-2xl border border-[#E7D8C8] bg-[#F6EBDD] p-4">
-                                    <p className="text-sm font-medium text-gray-500">
-                                        Renter join code
-                                    </p>
-                                    <p className="mt-2 text-lg font-bold tracking-wide text-gray-900">
-                                        {property.renterJoinCode || "Not available"}
-                                    </p>
-                                </div>
                             </div>
                         </section>
 
@@ -283,20 +315,20 @@ export default function PropertyDetails() {
                                         }}
                                         className="w-full rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00] sm:w-auto"
                                     >
-                                        Add Renter
+                                        Invite Renter
                                     </button>
                                 </div>
                                 {isAddingRenter && (
                                     <div className="mt-6 rounded-2xl border border-orange-200 bg-[#FFF8F3] p-4">
                                         <label className="mb-2 block text-sm font-medium text-gray-700">
-                                            Renter name
+                                            Renter email
                                         </label>
 
                                         <input
-                                            type="text"
-                                            value={newRenterName}
-                                            onChange={(event) => setNewRenterName(event.target.value)}
-                                            placeholder="Enter renter full name"
+                                            type="email"
+                                            value={inviteRenterEmail}
+                                            onChange={(event) => setInviteRenterEmail(event.target.value)}
+                                            placeholder="Enter renter email"
                                             className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#FF8A00] focus:ring-4 focus:ring-orange-100"
                                         />
 
@@ -309,18 +341,20 @@ export default function PropertyDetails() {
                                         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                                             <button
                                                 type="button"
-                                                onClick={handleAddRenter}
+                                                onClick={handleInviteRenter}
                                                 disabled={isSavingRenter}
                                                 className="w-full rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00] sm:w-auto"
                                             >
-                                                {isSavingRenter ? "Saving..." : "Save Renter"}
+                                                {isSavingRenter ? "Sending..." : "Send Invitation"}
                                             </button>
+
+
 
                                             <button
                                                 type="button"
                                                 onClick={() => {
                                                     setIsAddingRenter(false);
-                                                    setNewRenterName("");
+                                                    setInviteRenterEmail("");
                                                     setRenterMessage("");
                                                 }}
                                                 className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 sm:w-auto"
@@ -330,32 +364,52 @@ export default function PropertyDetails() {
                                         </div>
                                     </div>
                                 )}
+
+                                {renterMessage && !isAddingRenter && (
+                                    <div className="mt-6 rounded-2xl border border-orange-200 bg-[#FFF8F3] px-4 py-3">
+                                        <p className="text-sm font-medium text-gray-700">
+                                            {renterMessage}
+                                        </p>
+                                    </div>
+                                )}
+
+
                                 {property.renters && property.renters.length > 0 ? (
                                     <div className="mt-6 space-y-3">
-                                        {property.renters.map((renter, index) => (
-                                            <div
-                                                key={`${renter}-${index}`}
-                                                className="flex flex-col gap-4 rounded-2xl border border-[#D9DEE8] bg-[#F5F7FA] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-                                            >
+                                        {property.renters.map((renterItem, index) => {
+                                            const renterUser = getRenterUser(renterItem);
 
-                                                <div>
-                                                    <p className="font-semibold text-gray-900">
-                                                        {renter}
-                                                    </p>
-                                                    <p className="mt-1 text-sm text-gray-500">
-                                                        Active renter
-                                                    </p>
-                                                </div>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveRenter(index)}
-                                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-slate-100 sm:w-auto"
+                                            return (
+                                                <div
+                                                    key={renterUser?._id || index}
+                                                    className="flex flex-col gap-4 rounded-2xl border border-[#D9DEE8] bg-[#F5F7FA] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
                                                 >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        ))}
+                                                    <div>
+                                                        <p className="font-semibold text-gray-900">
+                                                            {formatRenterName(renterItem)}
+                                                        </p>
+
+                                                        {renterUser?.email && (
+                                                            <p className="mt-1 text-sm text-gray-500">
+                                                                {renterUser.email}
+                                                            </p>
+                                                        )}
+
+                                                        <p className="mt-1 text-sm text-gray-500">
+                                                            Joined: {formatJoinedAt(renterItem)}
+                                                        </p>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveRenter(renterItem)}
+                                                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-slate-100 sm:w-auto"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="mt-6 rounded-2xl border border-dashed border-orange-300 bg-[#FFF7F0] px-5 py-8 text-center">
@@ -363,11 +417,12 @@ export default function PropertyDetails() {
                                             No renters assigned yet
                                         </p>
                                         <p className="mt-2 text-sm text-gray-500">
-                                            Add renters to keep occupancy information updated
+                                            Invite renters or share the join code to connect them to this property
                                         </p>
                                     </div>
                                 )}
                             </section>
+
 
                             {/* Contract section */}
                             <section className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-6 shadow-sm sm:p-8">

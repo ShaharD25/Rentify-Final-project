@@ -64,7 +64,7 @@ export default function AddApartment() {
                         </h1>
 
                         <p className="mt-2 text-sm text-gray-600">
-                            Enter the join code you received from the homeowner
+                            Add apartment access by accepting a Homeowner invitation or using a renter join code
                         </p>
                     </div>
 
@@ -77,10 +77,40 @@ export default function AddApartment() {
                     </button>
                 </header>
 
+                <section className="mb-6 rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-6 shadow-sm">
+                    <div className="rounded-2xl border border-orange-300 bg-[#FFE8D1] px-4 py-4">
+                        <h2 className="text-xl font-bold text-gray-900">
+                            Accept Homeowner invitation
+                        </h2>
+
+                        <p className="mt-2 text-sm text-gray-600">
+                            If a Homeowner invited you to join an apartment, approve the invitation from your notifications.
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => navigate("/renter/notifications")}
+                        className="mt-6 rounded-2xl bg-[#FF8A00] px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00]"
+                    >
+                        Open Notifications
+                    </button>
+                </section>
+
                 <form
                     onSubmit={handleSubmit}
                     className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-6 shadow-sm"
                 >
+
+                    <div className="mb-6 rounded-2xl border border-orange-300 bg-[#FFE8D1] px-4 py-4">
+                        <h2 className="text-xl font-bold text-gray-900">
+                            Join with code
+                        </h2>
+
+                        <p className="mt-2 text-sm text-gray-600">
+                            Use this option when another Renter shares an apartment join code with you.
+                        </p>
+                    </div>
                     <label className="mb-2 block text-sm font-medium text-gray-700">
                         Apartment join code
                     </label>
@@ -107,7 +137,7 @@ export default function AddApartment() {
                             disabled={isLoading}
                             className="rounded-2xl bg-[#FF8A00] px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00] disabled:cursor-not-allowed disabled:opacity-70"
                         >
-                            {isLoading ? "Adding..." : "Add Apartment"}
+                            {isLoading ? "Joining..." : "Join Apartment"}
                         </button>
 
                         <button

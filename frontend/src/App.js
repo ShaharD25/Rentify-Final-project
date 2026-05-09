@@ -19,6 +19,12 @@ import IssueDetails from "./pages/IssueDetails";
 import PaymentsPage from "./pages/PaymentsPage";
 import RenterHome from "./pages/RenterHome";
 import AddApartment from "./pages/AddApartment";
+import RenterApartmentDetails from "./pages/RenterApartmentDetails";
+import RenterLayout from "./components/layout/RenterLayout";
+import RenterNotificationsPage from "./pages/RenterNotificationsPage";
+import RenterApartmentIssuesPage from "./pages/RenterApartmentIssuesPage";
+import CreateRenterIssue from "./pages/CreateRenterIssue";
+import RenterIssuesPage from "./pages/RenterIssuesPage";
 
 // Show the splash screen first, then move to the auth page.
 function SplashRedirect() {
@@ -61,13 +67,27 @@ function App() {
         <Route path="/" element={<SplashRedirect />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/role-selection" element={<RoleSelection />} />
-        <Route path="/renter" element={<RenterHome />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
 
         {/* Renter routes */}
-        <Route path="/renter" element={<RenterHome />} />
-        <Route path="/renter/apartments/add" element={<AddApartment />} />
+        <Route path="/renter" element={<RenterLayout />}>
+          {/* Renter dashboard */}
+          <Route index element={<RenterHome />} />
+
+          {/* Renter apartment management routes */}
+          <Route path="apartments/add" element={<AddApartment />} />
+          <Route path="apartments/:propertyId" element={<RenterApartmentDetails />} />
+          <Route path="apartments/:propertyId/issues" element={<RenterApartmentIssuesPage />} />
+          <Route path="apartments/:propertyId/issues/new" element={<CreateRenterIssue />} />
+
+          {/* Future renter sections */}
+          <Route path="payments" element={<ComingSoonPage title="Renter Payments" />} />
+          <Route path="issues" element={<RenterIssuesPage />} />
+          <Route path="messages" element={<ComingSoonPage title="Renter Messages" />} />
+          <Route path="settings" element={<ComingSoonPage title="Renter Settings" />} />
+          <Route path="notifications" element={<RenterNotificationsPage />} />
+        </Route>
 
         {/* Homeowner routes  */}
         <Route path="/homeowner" element={<HomeownerLayout />}>
@@ -79,7 +99,7 @@ function App() {
           <Route path="properties/new" element={<CreateProperty />} />
           <Route path="properties/:propertyId" element={<PropertyDetails />} />
 
-           {/* Issue management routes */}
+          {/* Issue management routes */}
           <Route path="issues" element={<IssuesPage />} />
           <Route path="properties/:propertyId/issues" element={<IssuesPage />} />
           <Route path="issues/:issueId" element={<IssueDetails />} />
@@ -87,7 +107,7 @@ function App() {
           {/* Payment management route */}
           <Route path="payments" element={<PaymentsPage />} />
 
-          
+
           <Route path="maintenance" element={<ComingSoonPage title="Maintenance" />} />
           <Route path="messages" element={<ComingSoonPage title="Messages" />} />
           <Route path="notifications" element={<ComingSoonPage title="Notifications" />} />
@@ -95,7 +115,7 @@ function App() {
 
         </Route>
       </Routes>
-    </BrowserRouter>
+    </BrowserRouter >
   );
 }
 

@@ -125,14 +125,42 @@ export default function IssuesPage() {
                                             {issue.title}
                                         </h3>
 
-                                        <p className="mt-2 text-sm text-gray-600 line-clamp-3">
-                                            {issue.description}
-                                        </p>
+                                        {issue.description && (
+                                            <p className="mt-2 text-sm text-gray-600 line-clamp-3">
+                                                {issue.description}
+                                            </p>
+                                        )}
+
+                                        {issue.aiSummary && (
+                                            <div className="mt-3 rounded-2xl border border-orange-200 bg-white px-4 py-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-[#FF8A00]">
+                                                    Smart Analysis
+                                                </p>
+
+                                                <p className="mt-1 text-sm leading-6 text-gray-700">
+                                                    {issue.aiSummary}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-wrap gap-2">
                                         <span className="rounded-full bg-[#F6EBDD] px-3 py-1 text-xs font-semibold text-gray-700">
                                             {formatCategory(issue.category)}
+                                        </span>
+
+                                        <span
+                                            className={
+                                                issue.priority === "high"
+                                                    ? "rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700"
+                                                    : issue.priority === "medium"
+                                                        ? "rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700"
+                                                        : "rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700"
+                                            }
+                                        >
+                                            {issue.priority
+                                                ? `${issue.priority.charAt(0).toUpperCase()}${issue.priority.slice(1)} Priority`
+                                                : "Medium Priority"}
                                         </span>
 
                                         <span className="rounded-full bg-[#F5F7FA] px-3 py-1 text-xs font-semibold text-gray-700">

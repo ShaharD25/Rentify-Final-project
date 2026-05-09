@@ -70,3 +70,27 @@ export async function addIssueMessage(issueId, messageData) {
     const data = await response.json();
     return data;
 }
+
+// Create a new issue with an optional image file.
+export async function createIssueWithImage(issueData) {
+    const formData = new FormData();
+
+    formData.append("propertyId", issueData.propertyId);
+    formData.append("title", issueData.title);
+    formData.append("description", issueData.description || "");
+    formData.append("createdByRenter", issueData.createdByRenter || "");
+    formData.append("createdByRenterName", issueData.createdByRenterName || "");
+
+    if (issueData.issueImage) {
+        formData.append("issueImage", issueData.issueImage);
+    }
+
+    const response = await fetch(ISSUE_API_BASE_URL, {
+        method: "POST",
+        body: formData,
+    });
+
+    const data = await response.json();
+    return data;
+}
+

@@ -69,16 +69,31 @@ export default function HomeownerHome() {
         return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
     }
 
+    function getRenterDisplayName(renterItem) {
+        // Supports both simple renter objects and renter wrapper objects.
+        const renterUser = renterItem?.renter || renterItem;
+
+        if (!renterUser) {
+            return "Unknown renter";
+        }
+
+        const fullName = `${renterUser.firstName || ""} ${renterUser.lastName || ""}`.trim();
+
+        return fullName || renterUser.email || "Unknown renter";
+    }
+
     function formatRenters(renters) {
         if (!renters || renters.length === 0) {
             return "No renters assigned yet";
         }
 
-        if (renters.length === 1) {
-            return renters[0];
+        const renterNames = renters.map((renterItem) => getRenterDisplayName(renterItem));
+
+        if (renterNames.length === 1) {
+            return renterNames[0];
         }
 
-        return `${renters.slice(0, -1).join(", ")} and ${renters[renters.length - 1]}`;
+        return `${renterNames.slice(0, -1).join(", ")} and ${renterNames[renterNames.length - 1]}`;
     }
 
     const visibleProperties = properties.slice(0, 3);

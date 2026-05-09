@@ -9,10 +9,16 @@ import { getRenterProperties } from "../services/propertyService";
 
 export default function RenterHome() {
     const navigate = useNavigate();
+    const [firstName, setFirstName] = useState("");
 
     const [apartments, setApartments] = useState([]);
     const [isLoadingApartments, setIsLoadingApartments] = useState(true);
     const [pageMessage, setPageMessage] = useState("");
+
+    useEffect(() => {
+        const savedFirstName = sessionStorage.getItem("firstName") || "";
+        setFirstName(savedFirstName);
+    }, []);
 
     useEffect(() => {
         async function loadRenterApartments() {
@@ -42,6 +48,14 @@ export default function RenterHome() {
         loadRenterApartments();
     }, []);
 
+    function formatName(name) {
+        if (!name) {
+            return "";
+        }
+
+        return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+    }
+
     return (
         <div className="min-h-screen bg-[#FFE8D6] px-4 py-6 sm:px-6 sm:py-10">
             <div className="mx-auto w-full max-w-6xl">
@@ -52,11 +66,11 @@ export default function RenterHome() {
                         </p>
 
                         <h1 className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
-                            My Apartments
+                            Welcome back{firstName ? `, ${formatName(firstName)}` : ""}!
                         </h1>
 
                         <p className="mt-2 text-sm text-gray-600">
-                            View all apartments linked to your renter account
+                            View and manage the apartments linked to your Renter account
                         </p>
                     </div>
 

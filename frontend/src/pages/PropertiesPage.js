@@ -44,24 +44,47 @@ export default function PropertiesPage() {
         loadProperties();
     }, []);
 
+    function getRenterDisplayName(renterItem) {
+        // Supports both simple renter objects and renter wrapper objects.
+        const renterUser = renterItem?.renter || renterItem;
+
+        if (!renterUser) {
+            return "Unknown renter";
+        }
+
+        const fullName = `${renterUser.firstName || ""} ${renterUser.lastName || ""}`.trim();
+
+        return fullName || renterUser.email || "Unknown renter";
+    }
+
+
     const filteredProperties = properties.filter((property) => {
         const address = property.fullAddress || "";
-        const renters = property.renters ? property.renters.join(" ") : "";
+
+        const renters = property.renters
+            ? property.renters
+                .map((renterItem) => getRenterDisplayName(renterItem))
+                .join(" ")
+            : "";
+
         const searchableText = `${address} ${renters}`.toLowerCase();
 
         return searchableText.includes(searchText.toLowerCase());
     });
 
+    
     function formatRenters(renters) {
         if (!renters || renters.length === 0) {
             return "No renters assigned yet";
         }
 
-        if (renters.length === 1) {
-            return renters[0];
+        const renterNames = renters.map((renterItem) => getRenterDisplayName(renterItem));
+
+        if (renterNames.length === 1) {
+            return renterNames[0];
         }
 
-        return `${renters.slice(0, -1).join(", ")} and ${renters[renters.length - 1]}`;
+        return `${renterNames.slice(0, -1).join(", ")} and ${renterNames[renterNames.length - 1]}`;
     }
 
     return (
