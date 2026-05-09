@@ -26,6 +26,8 @@ const authRoutes = require("./routes/auth.routes");
 const propertyRoutes = require("./routes/property.routes");
 const issueRoutes = require("./routes/issue.routes");
 const paymentRoutes = require("./routes/payment.routes");
+const notificationRoutes = require("./routes/notification.routes");
+
 
 const app = express();
 
@@ -36,6 +38,9 @@ app.use(cors());
 app.use(express.json());
 
 
+// Serve uploaded issue images.
+app.use("/uploads/issues", express.static(path.join(__dirname, "..", "uploads", "issues")));
+
 // Log every incoming request
 app.use(logger);
 
@@ -45,6 +50,7 @@ app.use("/api", authRoutes);
 app.use("/api", propertyRoutes);
 app.use("/api", issueRoutes);
 app.use("/api", paymentRoutes);
+app.use("/api", notificationRoutes);
 
 // Global error handler (must be after routes)
 app.use(errorHandler);

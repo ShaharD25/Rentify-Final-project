@@ -1,6 +1,104 @@
 const Property = require("../models/property.model");
 const User = require("../models/user");
 const crypto = require("crypto");
+const mongoose = require("mongoose");
+
+/*
+Check if a value is a valid MongoDB ObjectId.
+*/
+function isValidObjectId(value) {
+    return mongoose.Types.ObjectId.isValid(value);
+}
+
+/*
+Extract renter id from different renter structures.
+*/
+function getRenterIdFromItem(renterItem) {
+    if (!renterItem) {
+        return null;
+    }
+
+    if (renterItem.renter && renterItem.renter._id) {
+        return renterItem.renter._id;
+    }
+
+    if (renterItem.renter && isValidObjectId(renterItem.renter)) {
+        return renterItem.renter;
+    }
+
+    if (
+        renterItem._id &&
+        (renterItem.firstName || renterItem.lastName || renterItem.email || renterItem.role)
+    ) {
+        return renterItem._id;
+    }
+
+    if (isValidObjectId(renterItem) && !renterItem.joinedAt) {
+        return renterItem;
+    }
+
+    return null;
+}
+
+/*
+Normalize renters to the current structure.
+*/
+function normalizeRenters(renters, fallbackDate = new Date()) {
+    return (renters || [])
+        .map((renterItem) => {
+            const renterId = getRenterIdFromItem(renterItem);
+
+            if (!renterId) {
+                return null;
+            }
+
+            return {
+                renter: renterId,
+                joinedAt: renterItem.joinedAt || fallbackDate
+            };
+        })
+        .filter(Boolean);
+}
+
+/*
+Clean invalid renter records.
+Only real users with role renter stay linked to the property.
+*/
+async function cleanPropertyRentersById(propertyId) {
+    const property = await Property.findById(propertyId);
+
+    if (!property) {
+        return null;
+    }
+
+    const normalizedRenters = normalizeRenters(
+        property.renters,
+        property.createdAt || new Date()
+    );
+
+    const renterIds = normalizedRenters.map((renterItem) => renterItem.renter);
+
+    const validRenterUsers = await User.find({
+        _id: { $in: renterIds },
+        role: "renter"
+    }).select("_id");
+
+    const validRenterIdSet = new Set(
+        validRenterUsers.map((user) => user._id.toString())
+    );
+
+    const validRenters = normalizedRenters.filter((renterItem) =>
+        validRenterIdSet.has(renterItem.renter.toString())
+    );
+
+    await Property.findByIdAndUpdate(propertyId, {
+        $set: {
+            renters: validRenters
+        }
+    });
+
+    return validRenters;
+}
 
 /*
 Create a new property and connect it to the matching homeowner.
@@ -80,7 +178,7 @@ async function getHomeownerProperties(homeownerId) {
     }
 
     const properties = await Property.find({ homeowner: homeownerId })
-        .populate("renters", "firstName lastName email role")
+        .populate("renters.renter", "firstName lastName email role")
         .sort({
             createdAt: -1
         });
@@ -95,16 +193,18 @@ async function getHomeownerProperties(homeownerId) {
 Get one property by id for the property details page.
 */
 async function getPropertyById(propertyId) {
-    const property = await Property.findById(propertyId).populate(
-        "renters",
-        "firstName lastName email role"
-    );
-    if (!property) {
+    const cleanedRenters = await cleanPropertyRentersById(propertyId);
+
+    if (!cleanedRenters) {
         return {
             success: false,
             message: "Property not found."
         };
     }
+
+    const property = await Property.findById(propertyId)
+        .populate("homeowner", "firstName lastName email role")
+        .populate("renters.renter", "firstName lastName email role");
 
     return {
         success: true,
@@ -143,9 +243,15 @@ async function addRenterToProperty(propertyId, renterEmail) {
         };
     }
 
-    const isAlreadyLinked = property.renters.some(
-        (renterId) => renterId.toString() === renter._id.toString()
-    );
+    const isAlreadyLinked = property.renters.some((renterItem) => {
+        const currentRenterId = getRenterIdFromItem(renterItem);
+
+        if (!currentRenterId) {
+            return false;
+        }
+
+        return currentRenterId.toString() === renter._id.toString();
+    });
 
     if (isAlreadyLinked) {
         return {
@@ -154,13 +260,17 @@ async function addRenterToProperty(propertyId, renterEmail) {
         };
     }
 
-    property.renters.push(renter._id);
+    property.renters = normalizeRenters(property.renters, property.createdAt || new Date());
+
+    property.renters.push({
+        renter: renter._id,
+        joinedAt: new Date()
+    });
     await property.save();
 
-    const updatedProperty = await Property.findById(propertyId).populate(
-        "renters",
-        "firstName lastName email role"
-    );
+    const updatedProperty = await Property.findById(propertyId)
+        .populate("homeowner", "firstName lastName email role")
+        .populate("renters.renter", "firstName lastName email role");
 
     return {
         success: true,
@@ -168,37 +278,38 @@ async function addRenterToProperty(propertyId, renterEmail) {
         property: updatedProperty
     };
 }
-
 /*
 Remove one renter from a property by renter user id.
 */
 async function removeRenterFromProperty(propertyId, renterId) {
-    const property = await Property.findById(propertyId);
+    const cleanedRenters = await cleanPropertyRentersById(propertyId);
 
-    if (!property) {
+    if (!cleanedRenters) {
         return {
             success: false,
             message: "Property not found."
         };
     }
 
-    if (!property.renters || property.renters.length === 0) {
-        return {
-            success: false,
-            message: "No renters were found for this property."
-        };
-    }
+    const updatedRenters = cleanedRenters.filter((renterItem) => {
+        const currentRenterId = getRenterIdFromItem(renterItem);
 
-    property.renters = property.renters.filter(
-        (currentRenterId) => currentRenterId.toString() !== renterId.toString()
-    );
+        if (!currentRenterId) {
+            return false;
+        }
 
-    await property.save();
+        return currentRenterId.toString() !== renterId.toString();
+    });
 
-    const updatedProperty = await Property.findById(propertyId).populate(
-        "renters",
-        "firstName lastName email role"
-    );
+    await Property.findByIdAndUpdate(propertyId, {
+        $set: {
+            renters: updatedRenters
+        }
+    });
+
+    const updatedProperty = await Property.findById(propertyId)
+        .populate("homeowner", "firstName lastName email role")
+        .populate("renters.renter", "firstName lastName email role");
 
     return {
         success: true,
@@ -289,9 +400,9 @@ async function getRenterProperties(renterId) {
         };
     }
 
-    const properties = await Property.find({ renters: renterId })
-        .populate("homeowner", "firstName lastName email")
-        .populate("renters", "firstName lastName email role")
+    const properties = await Property.find({ "renters.renter": renterId })
+        .populate("homeowner", "firstName lastName email role")
+        .populate("renters.renter", "firstName lastName email role")
         .sort({ createdAt: -1 });
 
     return {
@@ -331,9 +442,15 @@ async function joinPropertyByCode(renterId, renterJoinCode) {
         };
     }
 
-    const isAlreadyLinked = property.renters.some(
-        (currentRenterId) => currentRenterId.toString() === renterId.toString()
-    );
+    const isAlreadyLinked = property.renters.some((renterItem) => {
+        const currentRenterId = getRenterIdFromItem(renterItem);
+
+        if (!currentRenterId) {
+            return false;
+        }
+
+        return currentRenterId.toString() === renterId.toString();
+    });
 
     if (isAlreadyLinked) {
         return {
@@ -342,13 +459,17 @@ async function joinPropertyByCode(renterId, renterJoinCode) {
         };
     }
 
-    property.renters.push(renterId);
+    property.renters = normalizeRenters(property.renters, property.createdAt || new Date());
+
+    property.renters.push({
+        renter: renterId,
+        joinedAt: new Date()
+    });
     await property.save();
 
     const updatedProperty = await Property.findById(property._id)
-        .populate("homeowner", "firstName lastName email")
-        .populate("renters", "firstName lastName email role");
-
+        .populate("homeowner", "firstName lastName email role")
+        .populate("renters.renter", "firstName lastName email role");
     return {
         success: true,
         message: "Apartment added successfully.",

@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const uploadIssueImage = require("../middlewares/uploadIssueImage.middleware");
 
 const {
     createIssue,
@@ -14,7 +15,7 @@ const {
 Create a new issue
 POST /api/issues
 */
-router.post("/issues", createIssue);
+router.post("/issues", uploadIssueImage.single("issueImage"), createIssue);
 
 /*
 Get all issues for one homeowner

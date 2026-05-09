@@ -8,22 +8,25 @@ async function createIssue(req, res) {
         propertyId,
         title,
         description,
-        imageUrl,
+        createdByRenter,
         createdByRenterName
     } = req.body;
 
-    if (!propertyId || !title || !description) {
-        return res.status(400).json({
-            success: false,
-            message: "Property id, title, and description are required."
-        });
-    }
+    if (!propertyId || !title) {
+    return res.status(400).json({
+        success: false,
+        message: "Property id and title are required."
+    });
+}
+
+    const imageUrl = req.file ? `/uploads/issues/${req.file.filename}` : "";
 
     const result = await issueService.createIssue({
         propertyId,
         title,
-        description,
+        description: description || "",
         imageUrl,
+        createdByRenter,
         createdByRenterName
     });
 

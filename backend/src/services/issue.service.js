@@ -2,10 +2,12 @@ const Issue = require("../models/issue.model");
 const Property = require("../models/property.model");
 const User = require("../models/user");
 
+
 /*
-Categorize an issue using simple rule-based logic.
+Analyze an issue using smart rule-based logic.
+This detects category, priority, and a short AI-style summary.
 */
-function categorizeIssue(title, description) {
+function analyzeIssue(title, description = "") {
     const combinedText = `${title} ${description}`.toLowerCase();
 
     const plumbingKeywords = [
@@ -16,7 +18,9 @@ function categorizeIssue(title, description) {
         "toilet",
         "bathroom",
         "shower",
-        "drain"
+        "drain",
+        "flood",
+        "wet"
     ];
 
     const electricityKeywords = [
@@ -27,18 +31,73 @@ function categorizeIssue(title, description) {
         "socket",
         "switch",
         "fuse",
-        "lamp"
+        "lamp",
+        "spark",
+        "short circuit"
     ];
 
+    const highPriorityKeywords = [
+        "flood",
+        "spark",
+        "smoke",
+        "fire",
+        "no power",
+        "danger",
+        "urgent",
+        "ceiling leak",
+        "burst"
+    ];
+
+    const mediumPriorityKeywords = [
+        "leak",
+        "broken",
+        "not working",
+        "blocked",
+        "no hot water",
+        "power issue"
+    ];
+
+    let category = "maintenance";
+
     if (plumbingKeywords.some((keyword) => combinedText.includes(keyword))) {
-        return "plumbing";
+        category = "plumbing";
     }
 
     if (electricityKeywords.some((keyword) => combinedText.includes(keyword))) {
-        return "electricity";
+        category = "electricity";
     }
 
-    return "maintenance";
+    let priority = "low";
+
+    if (mediumPriorityKeywords.some((keyword) => combinedText.includes(keyword))) {
+        priority = "medium";
+    }
+
+    if (highPriorityKeywords.some((keyword) => combinedText.includes(keyword))) {
+        priority = "high";
+    }
+
+    let aiSummary = "The issue was classified as a general maintenance request.";
+
+    if (category === "plumbing" && priority === "high") {
+        aiSummary = "The issue may require urgent attention because it mentions a serious water or leak-related problem.";
+    } else if (category === "plumbing") {
+        aiSummary = "The issue appears to be related to plumbing and should be checked by maintenance.";
+    } else if (category === "electricity" && priority === "high") {
+        aiSummary = "The issue may require urgent attention because it mentions a potentially dangerous electrical problem.";
+    } else if (category === "electricity") {
+        aiSummary = "The issue appears to be related to electricity and should be reviewed carefully.";
+    } else if (priority === "high") {
+        aiSummary = "The issue was marked as high priority because the description may indicate urgent damage or safety risk.";
+    } else if (priority === "medium") {
+        aiSummary = "The issue was marked as medium priority because it may affect normal apartment usage.";
+    }
+
+    return {
+        category,
+        priority,
+        aiSummary
+    };
 }
 
 /*
@@ -50,6 +109,7 @@ async function createIssue(issueData) {
         title,
         description,
         imageUrl,
+        createdByRenter,
         createdByRenterName
     } = issueData;
 
@@ -62,23 +122,39 @@ async function createIssue(issueData) {
         };
     }
 
-    const category = categorizeIssue(title, description);
+    if (createdByRenter) {
+        const isRenterLinkedToProperty = (property.renters || []).some((renterItem) => {
+            const currentRenterId = renterItem.renter || renterItem;
+            return currentRenterId.toString() === createdByRenter.toString();
+        });
+
+        if (!isRenterLinkedToProperty) {
+            return {
+                success: false,
+                message: "This renter is not linked to this property."
+            };
+        }
+    }
+
+    const issueAnalysis = analyzeIssue(title, description || "");
 
     const newIssue = new Issue({
         property: propertyId,
         title: title.trim(),
-        description: description.trim(),
+        description: description ? description.trim() : "",
         imageUrl: imageUrl || "",
-        category,
+        category: issueAnalysis.category,
+        priority: issueAnalysis.priority,
+        aiSummary: issueAnalysis.aiSummary,
+        createdByRenter: createdByRenter || null,
         createdByRenterName: createdByRenterName || ""
     });
 
     await newIssue.save();
 
-    const populatedIssue = await Issue.findById(newIssue._id).populate(
-        "property",
-        "fullAddress homeowner"
-    );
+    const populatedIssue = await Issue.findById(newIssue._id)
+        .populate("property", "fullAddress homeowner")
+        .populate("createdByRenter", "firstName lastName email role");
 
     return {
         success: true,
@@ -112,6 +188,7 @@ async function getHomeownerIssues(homeownerId) {
 
     const issues = await Issue.find({ property: { $in: propertyIds } })
         .populate("property", "fullAddress homeowner")
+        .populate("createdByRenter", "firstName lastName email role")
         .sort({ createdAt: -1 });
 
     return {
@@ -135,6 +212,7 @@ async function getPropertyIssues(propertyId) {
 
     const issues = await Issue.find({ property: propertyId })
         .populate("property", "fullAddress homeowner")
+        .populate("createdByRenter", "firstName lastName email role")
         .sort({ createdAt: -1 });
 
     return {

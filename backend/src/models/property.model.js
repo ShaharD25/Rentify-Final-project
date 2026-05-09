@@ -52,8 +52,15 @@ const propertySchema = new mongoose.Schema(
         renters: {
             type: [
                 {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: "User"
+                    renter: {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "User",
+                        required: true
+                    },
+                    joinedAt: {
+                        type: Date,
+                        default: Date.now
+                    }
                 }
             ],
             default: []
