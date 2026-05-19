@@ -18,6 +18,7 @@ export default function RenterApartmentIssuesPage() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [isLoading, setIsLoading] = useState(true);
     const [pageMessage, setPageMessage] = useState("");
+    const [visibleIssuesCount, setVisibleIssuesCount] = useState(3);
 
     useEffect(() => {
         async function loadIssuesData() {
@@ -85,6 +86,9 @@ export default function RenterApartmentIssuesPage() {
             ? issues
             : issues.filter((issue) => issue.status === statusFilter);
 
+    const visibleIssues = filteredIssues.slice(0, visibleIssuesCount);
+    const hasMoreIssues = filteredIssues.length > visibleIssues.length;
+
     return (
         <div className="px-4 py-6 sm:px-6 lg:px-8">
             <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -128,7 +132,10 @@ export default function RenterApartmentIssuesPage() {
 
                 <select
                     value={statusFilter}
-                    onChange={(event) => setStatusFilter(event.target.value)}
+                    onChange={(event) => {
+                        setStatusFilter(event.target.value);
+                        setVisibleIssuesCount(3);
+                    }}
                     className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#FF8A00] focus:ring-4 focus:ring-orange-100 sm:w-64"
                 >
                     <option value="all">All statuses</option>
@@ -161,75 +168,89 @@ export default function RenterApartmentIssuesPage() {
                     </p>
                 </div>
             ) : (
-                <div className="space-y-4">
-                    {filteredIssues.map((issue) => (
-                        <article
-                            key={issue._id}
-                            className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 shadow-sm"
-                        >
-                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <h3 className="text-lg font-bold text-gray-900">
-                                            {issue.title}
-                                        </h3>
+                <>
+                    <div className="space-y-4">
+                        {visibleIssues.map((issue) => (
+                            <article
+                                key={issue._id}
+                                className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 shadow-sm"
+                            >
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h3 className="text-lg font-bold text-gray-900">
+                                                {issue.title}
+                                            </h3>
 
-                                        <span className={getStatusBadgeClass(issue.status)}>
-                                            {formatStatus(issue.status)}
-                                        </span>
+                                            <span className={getStatusBadgeClass(issue.status)}>
+                                                {formatStatus(issue.status)}
+                                            </span>
 
-                                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700">
-                                            {issue.category}
-                                        </span>
+                                            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700">
+                                                {issue.category}
+                                            </span>
 
-                                        <span
-                                            className={
-                                                issue.priority === "high"
-                                                    ? "rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700"
-                                                    : issue.priority === "medium"
-                                                        ? "rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700"
-                                                        : "rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700"
-                                            }
-                                        >
-                                            {issue.priority ? `${issue.priority.charAt(0).toUpperCase()}${issue.priority.slice(1)} Priority` : "Medium Priority"}
-                                        </span>
+                                            <span
+                                                className={
+                                                    issue.priority === "high"
+                                                        ? "rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700"
+                                                        : issue.priority === "medium"
+                                                            ? "rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700"
+                                                            : "rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700"
+                                                }
+                                            >
+                                                {issue.priority ? `${issue.priority.charAt(0).toUpperCase()}${issue.priority.slice(1)} Priority` : "Medium Priority"}
+                                            </span>
+                                        </div>
+
+                                        {issue.description && (
+                                            <p className="mt-2 text-sm leading-6 text-gray-700">
+                                                {issue.description}
+                                            </p>
+                                        )}
+
+                                        {issue.aiSummary && (
+                                            <div className="mt-3 rounded-2xl border border-orange-200 bg-white px-4 py-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-[#FF8A00]">
+                                                    Smart Analysis
+                                                </p>
+
+                                                <p className="mt-1 text-sm leading-6 text-gray-700">
+                                                    {issue.aiSummary}
+                                                </p>
+                                            </div>
+                                        )}
+
+
+                                        <p className="mt-3 text-xs text-gray-500">
+                                            Created at: {new Date(issue.createdAt).toLocaleString()}
+                                        </p>
                                     </div>
 
-                                    {issue.description && (
-                                        <p className="mt-2 text-sm leading-6 text-gray-700">
-                                            {issue.description}
-                                        </p>
+                                    {issue.imageUrl && (
+                                        <img
+                                            src={getImageUrl(issue.imageUrl)}
+                                            alt="Issue"
+                                            className="h-28 w-28 rounded-2xl border border-orange-100 object-cover"
+                                        />
                                     )}
-
-                                    {issue.aiSummary && (
-                                        <div className="mt-3 rounded-2xl border border-orange-200 bg-white px-4 py-3">
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-[#FF8A00]">
-                                                Smart Analysis
-                                            </p>
-
-                                            <p className="mt-1 text-sm leading-6 text-gray-700">
-                                                {issue.aiSummary}
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    
-                                    <p className="mt-3 text-xs text-gray-500">
-                                        Created at: {new Date(issue.createdAt).toLocaleString()}
-                                    </p>
                                 </div>
+                            </article>
+                        ))}
 
-                                {issue.imageUrl && (
-                                    <img
-                                        src={getImageUrl(issue.imageUrl)}
-                                        alt="Issue"
-                                        className="h-28 w-28 rounded-2xl border border-orange-100 object-cover"
-                                    />
-                                )}
+                        {hasMoreIssues && (
+                            <div className="mt-6 text-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setVisibleIssuesCount(issues.length)}
+                                    className="rounded-2xl border border-orange-200 bg-[#FFF8F3] px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50"
+                                >
+                                    View all issues
+                                </button>
                             </div>
-                        </article>
-                    ))}
-                </div>
+                        )}
+                    </div>
+                </>
             )}
         </div>
     );

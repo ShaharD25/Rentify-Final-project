@@ -3,13 +3,79 @@ Homeowner layout component.
 Provides a shared sidebar and page container for all homeowner pages.
 */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { getUnreadNotificationCount } from "../../services/notificationService";
+import { getUnreadChatCount } from "../../services/chatService";
+import FloatingAssistantWidget from "../assistant/FloatingAssistantWidget";
 
 export default function HomeownerLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
     const navigate = useNavigate();
     const location = useLocation();
+
+    useEffect(() => {
+        async function loadUnreadNotificationsCount() {
+            const homeownerId = sessionStorage.getItem("userId");
+
+            if (!homeownerId) {
+                return;
+            }
+
+            try {
+                const result = await getUnreadNotificationCount(homeownerId);
+
+                if (result.success) {
+                    setUnreadNotificationsCount(result.count || 0);
+                }
+            } catch (error) {
+                console.error("Failed to load notification count:", error);
+            }
+        }
+
+        loadUnreadNotificationsCount();
+
+        window.addEventListener("notificationsUpdated", loadUnreadNotificationsCount);
+
+        return () => {
+            window.removeEventListener("notificationsUpdated", loadUnreadNotificationsCount);
+        };
+    }, [location.pathname]);
+
+    useEffect(() => {
+        async function loadUnreadChatCount() {
+            const homeownerId = sessionStorage.getItem("userId");
+
+            if (!homeownerId) {
+                return;
+            }
+
+            try {
+                const result = await getUnreadChatCount(homeownerId, "homeowner");
+
+                if (result.success) {
+                    setUnreadChatCount(result.count || 0);
+                }
+            } catch (error) {
+                console.error("Failed to load chat unread count:", error);
+            }
+        }
+
+        loadUnreadChatCount();
+
+        const intervalId = setInterval(loadUnreadChatCount, 15000);
+
+        window.addEventListener("chatUnreadUpdated", loadUnreadChatCount);
+
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener("chatUnreadUpdated", loadUnreadChatCount);
+        };
+    }, [location.pathname]);
+
+
 
     function handleLogout() {
         sessionStorage.removeItem("firstName");
@@ -26,7 +92,11 @@ export default function HomeownerLayout() {
         }
 
         if (routeKey === "properties") {
-            return currentPath.startsWith("/homeowner/properties");
+            return (
+                currentPath.startsWith("/homeowner/properties") &&
+                !currentPath.includes("/issues") &&
+                !currentPath.includes("/chat")
+            );
         }
 
         if (routeKey === "issues") {
@@ -44,8 +114,9 @@ export default function HomeownerLayout() {
             return currentPath.startsWith("/homeowner/maintenance");
         }
 
-        if (routeKey === "messages") {
-            return currentPath.startsWith("/homeowner/messages");
+        if (routeKey === "chat") {
+            return currentPath.startsWith("/homeowner/chat") ||
+                currentPath.includes("/chat");
         }
 
         if (routeKey === "notifications") {
@@ -83,9 +154,8 @@ export default function HomeownerLayout() {
 
             <div className="flex min-h-screen">
                 <aside
-                    className={`fixed left-0 top-0 z-50 flex h-full w-72 transform flex-col bg-[#FFF8F3]/95 backdrop-blur-sm border-r border-orange-100 shadow-xl transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none ${
-                        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-                    }`}
+                    className={`fixed left-0 top-0 z-50 flex h-full w-72 transform flex-col bg-[#FFF8F3]/95 backdrop-blur-sm border-r border-orange-100 shadow-xl transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+                        }`}
                 >
                     <div className="flex h-20 items-center justify-between border-b border-orange-100 px-6">
                         <div>
@@ -155,10 +225,19 @@ export default function HomeownerLayout() {
 
                             <button
                                 type="button"
-                                onClick={() => handleNavigate("/homeowner/messages")}
-                                className={getNavButtonClass("messages")}
+                                onClick={() => handleNavigate("/homeowner/chat")}
+                                className={getNavButtonClass("chat")}
                             >
-                                <span>Messages</span>
+                                <span className="flex items-center gap-2">
+                                    <span>Chat</span>
+
+                                    {unreadChatCount > 0 && (
+                                        <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                                            {unreadChatCount}
+                                        </span>
+                                    )}
+                                </span>
+
                                 <span>›</span>
                             </button>
 
@@ -167,7 +246,16 @@ export default function HomeownerLayout() {
                                 onClick={() => handleNavigate("/homeowner/notifications")}
                                 className={getNavButtonClass("notifications")}
                             >
-                                <span>Notifications</span>
+                                <span className="flex items-center gap-2">
+                                    <span>Notifications</span>
+
+                                    {unreadNotificationsCount > 0 && (
+                                        <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                                            {unreadNotificationsCount}
+                                        </span>
+                                    )}
+                                </span>
+
                                 <span>›</span>
                             </button>
 
@@ -211,6 +299,7 @@ export default function HomeownerLayout() {
                     </main>
                 </div>
             </div>
+            <FloatingAssistantWidget role="homeowner" />
         </div>
     );
 }

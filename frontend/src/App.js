@@ -25,6 +25,16 @@ import RenterNotificationsPage from "./pages/RenterNotificationsPage";
 import RenterApartmentIssuesPage from "./pages/RenterApartmentIssuesPage";
 import CreateRenterIssue from "./pages/CreateRenterIssue";
 import RenterIssuesPage from "./pages/RenterIssuesPage";
+import RenterApartmentsPage from "./pages/RenterApartmentsPage";
+import HomeownerNotificationsPage from "./pages/HomeownerNotificationsPage";
+import PropertyChatPage from "./pages/PropertyChatPage";
+import ChatsPage from "./pages/ChatsPage";
+import RenterApartmentBillsPage from "./pages/RenterApartmentBillsPage";
+import RenterBillsPage from "./pages/RenterBillsPage";
+import RenterRoommatesPage from "./pages/RenterRoommatesPage";
+import RenterApartmentRoommatesPage from "./pages/RenterApartmentRoommatesPage";
+import SettingsPage from "./pages/SettingsPage";
+
 
 // Show the splash screen first, then move to the auth page.
 function SplashRedirect() {
@@ -69,53 +79,82 @@ function App() {
         <Route path="/role-selection" element={<RoleSelection />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
-
         {/* Renter routes */}
         <Route path="/renter" element={<RenterLayout />}>
           {/* Renter dashboard */}
           <Route index element={<RenterHome />} />
 
-          {/* Renter apartment management routes */}
+          {/* Renter apartment routes */}
+          <Route path="apartments" element={<RenterApartmentsPage />} />
           <Route path="apartments/add" element={<AddApartment />} />
           <Route path="apartments/:propertyId" element={<RenterApartmentDetails />} />
+
+          {/* Renter issue routes */}
+          <Route path="issues" element={<RenterIssuesPage />} />
           <Route path="apartments/:propertyId/issues" element={<RenterApartmentIssuesPage />} />
           <Route path="apartments/:propertyId/issues/new" element={<CreateRenterIssue />} />
 
-          {/* Future renter sections */}
-          <Route path="payments" element={<ComingSoonPage title="Renter Payments" />} />
-          <Route path="issues" element={<RenterIssuesPage />} />
-          <Route path="messages" element={<ComingSoonPage title="Renter Messages" />} />
-          <Route path="settings" element={<ComingSoonPage title="Renter Settings" />} />
+          {/* Renter bills routes */}
+          <Route path="bills" element={<RenterBillsPage />} />
+          <Route path="apartments/:propertyId/bills" element={<RenterApartmentBillsPage />} />
+
+          {/* Renter roommates routes */}
+          <Route path="roommates" element={<RenterRoommatesPage />} />
+          <Route
+            path="apartments/:propertyId/roommates"
+            element={<RenterApartmentRoommatesPage />}
+          />
+
+          {/* Renter chat routes */}
+          <Route path="chat" element={<ChatsPage role="renter" />} />
+          <Route
+            path="apartments/:propertyId/chat"
+            element={<PropertyChatPage role="renter" />}
+          />
+
+          {/* Renter notification routes */}
           <Route path="notifications" element={<RenterNotificationsPage />} />
+
+          {/* Renter settings route */}
+          <Route path="settings" element={<SettingsPage />} />
+
+          
         </Route>
 
-        {/* Homeowner routes  */}
+        {/* Homeowner routes */}
         <Route path="/homeowner" element={<HomeownerLayout />}>
           {/* Homeowner dashboard */}
           <Route index element={<HomeownerHome />} />
 
-          {/* Property management routes */}
+          {/* Homeowner property routes */}
           <Route path="properties" element={<PropertiesPage />} />
           <Route path="properties/new" element={<CreateProperty />} />
           <Route path="properties/:propertyId" element={<PropertyDetails />} />
 
-          {/* Issue management routes */}
+          {/* Homeowner issue routes */}
           <Route path="issues" element={<IssuesPage />} />
           <Route path="properties/:propertyId/issues" element={<IssuesPage />} />
           <Route path="issues/:issueId" element={<IssueDetails />} />
 
-          {/* Payment management route */}
+          {/* Homeowner payment routes */}
           <Route path="payments" element={<PaymentsPage />} />
 
+          {/* Homeowner chat routes */}
+          <Route path="chat" element={<ChatsPage role="homeowner" />} />
+          <Route
+            path="properties/:propertyId/chat"
+            element={<PropertyChatPage role="homeowner" />}
+          />
 
-          <Route path="maintenance" element={<ComingSoonPage title="Maintenance" />} />
-          <Route path="messages" element={<ComingSoonPage title="Messages" />} />
-          <Route path="notifications" element={<ComingSoonPage title="Notifications" />} />
-          <Route path="settings" element={<ComingSoonPage title="Settings" />} />
+          {/* Homeowner notification routes */}
+          <Route path="notifications" element={<HomeownerNotificationsPage />} />
 
+          
+          {/* Homeowner settings route  */}
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
-    </BrowserRouter >
+    </BrowserRouter>
   );
 }
 

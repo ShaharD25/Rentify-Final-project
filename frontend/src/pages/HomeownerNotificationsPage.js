@@ -1,20 +1,18 @@
 /*
-Renter notifications page.
-Displays renter notifications as compact rows.
+Homeowner notifications page.
+Displays homeowner notifications as compact rows.
 Opens each notification in a modal and marks it as read.
 */
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-    acceptPropertyInvitation,
-    declinePropertyInvitation,
     getUserNotifications,
     markNotificationAsRead
 } from "../services/notificationService";
 import NotificationDetailsModal from "../components/notifications/NotificationDetailsModal";
 
-export default function RenterNotificationsPage() {
+export default function HomeownerNotificationsPage() {
     const navigate = useNavigate();
 
     const [notifications, setNotifications] = useState([]);
@@ -22,20 +20,19 @@ export default function RenterNotificationsPage() {
     const [selectedFilter, setSelectedFilter] = useState("all");
     const [pageMessage, setPageMessage] = useState("");
     const [isLoading, setIsLoading] = useState(true);
-    const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
         async function loadNotifications() {
-            const renterId = sessionStorage.getItem("userId");
+            const homeownerId = sessionStorage.getItem("userId");
 
-            if (!renterId) {
-                setPageMessage("No renter session was found. Please sign in again.");
+            if (!homeownerId) {
+                setPageMessage("No homeowner session was found. Please sign in again.");
                 setIsLoading(false);
                 return;
             }
 
             try {
-                const result = await getUserNotifications(renterId);
+                const result = await getUserNotifications(homeownerId);
 
                 if (result.success) {
                     setNotifications(result.notifications || []);
@@ -124,18 +121,18 @@ export default function RenterNotificationsPage() {
         }
 
         if (
-            selectedNotification.type === "property_invitation" &&
-            selectedNotification.property?._id
+            selectedNotification.type === "issue_created" &&
+            selectedNotification.issue?._id
         ) {
-            navigate(`/renter/apartments/${selectedNotification.property._id}`);
+            navigate(`/homeowner/issues/${selectedNotification.issue._id}`);
             return;
         }
 
         if (
-            selectedNotification.type === "issue_status_updated" &&
-            selectedNotification.property?._id
+            selectedNotification.type === "payment_created" ||
+            selectedNotification.type === "payment_late"
         ) {
-            navigate(`/renter/apartments/${selectedNotification.property._id}/issues`);
+            navigate("/homeowner/payments");
             return;
         }
 
@@ -144,75 +141,8 @@ export default function RenterNotificationsPage() {
             selectedNotification.type === "contract_updated"
         ) {
             if (selectedNotification.property?._id) {
-                navigate(`/renter/apartments/${selectedNotification.property._id}`);
+                navigate(`/homeowner/properties/${selectedNotification.property._id}`);
             }
-        }
-
-
-    }
-
-    // Accepts a property invitation notification.
-    async function handleAcceptInvitation() {
-        const renterId = sessionStorage.getItem("userId");
-
-        if (!renterId || !selectedNotification?._id) {
-            setPageMessage("No renter session was found. Please sign in again.");
-            return;
-        }
-
-        setIsUpdating(true);
-
-        try {
-            const result = await acceptPropertyInvitation(selectedNotification._id, renterId);
-
-            if (result.success) {
-                window.dispatchEvent(new Event("notificationsUpdated"));
-                navigate("/renter/apartments");
-            } else {
-                setPageMessage(result.message || "Failed to accept invitation.");
-            }
-        } catch (error) {
-            setPageMessage("Server error. Please try again later.");
-        } finally {
-            setIsUpdating(false);
-        }
-    }
-
-    // Declines a property invitation notification.
-    async function handleDeclineInvitation() {
-        const renterId = sessionStorage.getItem("userId");
-
-        if (!renterId || !selectedNotification?._id) {
-            setPageMessage("No renter session was found. Please sign in again.");
-            return;
-        }
-
-        setIsUpdating(true);
-
-        try {
-            const result = await declinePropertyInvitation(selectedNotification._id, renterId);
-
-            if (result.success) {
-                const updatedNotification = result.notification;
-
-                setSelectedNotification(updatedNotification);
-
-                setNotifications((prevNotifications) =>
-                    prevNotifications.map((item) =>
-                        item._id === updatedNotification._id
-                            ? updatedNotification
-                            : item
-                    )
-                );
-
-                window.dispatchEvent(new Event("notificationsUpdated"));
-            } else {
-                setPageMessage(result.message || "Failed to decline invitation.");
-            }
-        } catch (error) {
-            setPageMessage("Server error. Please try again later.");
-        } finally {
-            setIsUpdating(false);
         }
     }
 
@@ -241,7 +171,7 @@ export default function RenterNotificationsPage() {
                 </h1>
 
                 <p className="mt-2 text-sm text-gray-600">
-                    View property invitations and system updates.
+                    View new issue reports and important property updates.
                 </p>
             </header>
 
@@ -257,8 +187,9 @@ export default function RenterNotificationsPage() {
                 >
                     <option value="all">All notifications</option>
                     <option value="unread">Unread only</option>
-                    <option value="property_invitation">Invitations</option>
-                    <option value="issue_status_updated">Issue updates</option>
+                    <option value="issue_created">Issues</option>
+                    <option value="payment_created">New payments</option>
+                    <option value="payment_late">Late payments</option>
                     <option value="contract_uploaded">New contracts</option>
                     <option value="contract_updated">Contract updates</option>
                 </select>
@@ -285,7 +216,7 @@ export default function RenterNotificationsPage() {
                     </h3>
 
                     <p className="mt-2 text-sm text-gray-600">
-                        Property invitations will appear here.
+                        New issue reports will appear here.
                     </p>
                 </div>
             ) : (
@@ -337,12 +268,9 @@ export default function RenterNotificationsPage() {
 
             <NotificationDetailsModal
                 notification={selectedNotification}
-                role="renter"
+                role="homeowner"
                 onClose={() => setSelectedNotification(null)}
                 onOpenRelated={handleOpenRelatedItem}
-                onAcceptInvitation={handleAcceptInvitation}
-                onDeclineInvitation={handleDeclineInvitation}
-                isUpdating={isUpdating}
             />
         </div>
     );

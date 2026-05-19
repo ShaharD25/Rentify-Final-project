@@ -121,9 +121,10 @@ export default function PropertyDetails() {
     }
 
 
+
     async function handleRemoveRenter(renterItem) {
         const renterUser = getRenterUser(renterItem);
-        const renterId = renterUser?._id;
+        const renterId = renterUser?._id || renterUser;
 
         if (!renterId) {
             setRenterMessage("Renter id is missing.");
@@ -224,6 +225,14 @@ export default function PropertyDetails() {
                             className="w-full rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#E67C00] sm:w-auto"
                         >
                             View Issues
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/homeowner/properties/${propertyId}/chat`)}
+                            className="w-full rounded-2xl border border-orange-200 bg-[#FFF8F3] px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 sm:w-auto"
+                        >
+                            Open Chat
                         </button>
 
                         <button

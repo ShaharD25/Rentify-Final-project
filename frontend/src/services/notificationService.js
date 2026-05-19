@@ -29,10 +29,10 @@ export async function getRenterNotifications(renterId) {
     return data;
 }
 
-// Get unread notification count for one renter.
-export async function getUnreadNotificationCount(renterId) {
+// Get unread notification count for one user.
+export async function getUnreadNotificationCount(userId) {
     const response = await fetch(
-        `${NOTIFICATION_API_BASE_URL}/renter/${renterId}/unread-count`
+        `${NOTIFICATION_API_BASE_URL}/user/${userId}/unread-count`
     );
 
     const data = await response.json();
@@ -72,6 +72,24 @@ export async function declinePropertyInvitation(notificationId, renterId) {
         },
         body: JSON.stringify({ renterId }),
     });
+
+    const data = await response.json();
+    return data;
+}
+
+// Get all notifications for one user.
+export async function getUserNotifications(userId) {
+    const response = await fetch(`${NOTIFICATION_API_BASE_URL}/user/${userId}`);
+
+    const data = await response.json();
+    return data;
+}
+
+// Get one notification by id.
+export async function getNotificationById(notificationId, userId) {
+    const response = await fetch(
+        `${NOTIFICATION_API_BASE_URL}/${notificationId}?userId=${userId}`
+    );
 
     const data = await response.json();
     return data;

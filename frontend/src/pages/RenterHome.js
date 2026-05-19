@@ -56,6 +56,11 @@ export default function RenterHome() {
         return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
     }
 
+    
+        const visibleApartments = apartments.slice(0, 3);
+        const hasMoreApartments = apartments.length > visibleApartments.length;
+
+
     return (
         <div className="min-h-screen bg-[#FFE8D6] px-4 py-6 sm:px-6 sm:py-10">
             <div className="mx-auto w-full max-w-6xl">
@@ -114,8 +119,9 @@ export default function RenterHome() {
                         </button>
                     </div>
                 ) : (
+                    <>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {apartments.map((apartment) => (
+                        {visibleApartments.map((apartment) => (
                             <button
                                 key={apartment._id}
                                 type="button"
@@ -153,6 +159,19 @@ export default function RenterHome() {
                             </button>
                         ))}
                     </div>
+
+                    {hasMoreApartments && (
+                    <div className="mt-6 text-center">
+                        <button
+                            type="button"
+                            onClick={() => navigate("/renter/apartments")}
+                            className="rounded-2xl border border-orange-200 bg-[#FFF8F3] px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50"
+                        >
+                            View {apartments.length - visibleApartments.length} more apartments
+                        </button>
+                    </div>
+                )}
+                </>
                 )}
             </div>
         </div>

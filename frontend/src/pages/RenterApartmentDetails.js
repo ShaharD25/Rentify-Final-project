@@ -196,7 +196,7 @@ export default function RenterApartmentDetails() {
                             )}
                         </section>
 
-                        <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                             <button
                                 type="button"
                                 onClick={() => navigate(`/renter/apartments/${propertyId}/issues`)}
@@ -205,6 +205,7 @@ export default function RenterApartmentDetails() {
                                 <h3 className="text-lg font-bold text-gray-900">
                                     Issues
                                 </h3>
+
                                 <p className="mt-2 text-sm text-gray-600">
                                     View and report apartment issues
                                 </p>
@@ -212,25 +213,43 @@ export default function RenterApartmentDetails() {
 
                             <button
                                 type="button"
+                                onClick={() => navigate(`/renter/apartments/${propertyId}/bills`)}
                                 className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                             >
                                 <h3 className="text-lg font-bold text-gray-900">
-                                    Payments
+                                    Bills
                                 </h3>
+
                                 <p className="mt-2 text-sm text-gray-600">
-                                    View payment status and history
+                                    Track shared apartment expenses
                                 </p>
                             </button>
 
                             <button
                                 type="button"
+                                onClick={() => navigate(`/renter/apartments/${propertyId}/roommates`)}
                                 className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                             >
                                 <h3 className="text-lg font-bold text-gray-900">
-                                    Messages
+                                    Roommates
                                 </h3>
+
                                 <p className="mt-2 text-sm text-gray-600">
-                                    Communicate about this apartment
+                                    View apartment Renters and invite a roommate
+                                </p>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => navigate(`/renter/apartments/${propertyId}/chat`)}
+                                className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                            >
+                                <h3 className="text-lg font-bold text-gray-900">
+                                    Chat
+                                </h3>
+
+                                <p className="mt-2 text-sm text-gray-600">
+                                    Open the apartment group chat
                                 </p>
                             </button>
                         </section>

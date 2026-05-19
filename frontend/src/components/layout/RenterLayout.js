@@ -5,10 +5,13 @@ Provides a shared sidebar and page container for all renter pages.
 import { useEffect, useState } from "react";
 import { getUnreadNotificationCount } from "../../services/notificationService";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { getUnreadChatCount } from "../../services/chatService";
+import FloatingAssistantWidget from "../assistant/FloatingAssistantWidget";
 
 export default function RenterLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -32,6 +35,43 @@ export default function RenterLayout() {
         }
 
         loadUnreadNotificationsCount();
+
+        window.addEventListener("notificationsUpdated", loadUnreadNotificationsCount);
+
+        return () => {
+            window.removeEventListener("notificationsUpdated", loadUnreadNotificationsCount);
+        };
+    }, [location.pathname]);
+
+    useEffect(() => {
+        async function loadUnreadChatCount() {
+            const renterId = sessionStorage.getItem("userId");
+
+            if (!renterId) {
+                return;
+            }
+
+            try {
+                const result = await getUnreadChatCount(renterId, "renter");
+
+                if (result.success) {
+                    setUnreadChatCount(result.count || 0);
+                }
+            } catch (error) {
+                console.error("Failed to load chat unread count:", error);
+            }
+        }
+
+        loadUnreadChatCount();
+
+        const intervalId = setInterval(loadUnreadChatCount, 15000);
+
+        window.addEventListener("chatUnreadUpdated", loadUnreadChatCount);
+
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener("chatUnreadUpdated", loadUnreadChatCount);
+        };
     }, [location.pathname]);
 
     function handleLogout() {
@@ -47,28 +87,44 @@ export default function RenterLayout() {
         if (routeKey === "apartments") {
             return (
                 currentPath === "/renter" ||
-                currentPath.startsWith("/renter/apartments")
+                (
+                    currentPath.startsWith("/renter/apartments") &&
+                    !currentPath.includes("/issues") &&
+                    !currentPath.includes("/bills") &&
+                    !currentPath.includes("/roommates") &&
+                    !currentPath.includes("/chat")
+                )
             );
         }
 
-        if (routeKey === "payments") {
-            return currentPath.startsWith("/renter/payments");
-        }
-
         if (routeKey === "issues") {
-            return currentPath.startsWith("/renter/issues");
+            return (
+                currentPath.startsWith("/renter/issues") ||
+                currentPath.includes("/issues")
+            );
         }
 
-        if (routeKey === "messages") {
-            return currentPath.startsWith("/renter/messages");
+        if (routeKey === "bills") {
+            return (
+                currentPath.startsWith("/renter/bills") ||
+                currentPath.includes("/bills")
+            );
         }
 
-        if (routeKey === "settings") {
-            return currentPath.startsWith("/renter/settings");
+
+        if (routeKey === "chat") {
+            return (
+                currentPath.startsWith("/renter/chat") ||
+                currentPath.includes("/chat")
+            );
         }
 
         if (routeKey === "notifications") {
             return currentPath.startsWith("/renter/notifications");
+        }
+
+        if (routeKey === "settings") {
+            return currentPath.startsWith("/renter/settings");
         }
 
         return false;
@@ -131,14 +187,6 @@ export default function RenterLayout() {
                                 <span>›</span>
                             </button>
 
-                            <button
-                                type="button"
-                                onClick={() => handleNavigate("/renter/payments")}
-                                className={getNavButtonClass("payments")}
-                            >
-                                <span>Payments</span>
-                                <span>›</span>
-                            </button>
 
                             <button
                                 type="button"
@@ -151,10 +199,37 @@ export default function RenterLayout() {
 
                             <button
                                 type="button"
-                                onClick={() => handleNavigate("/renter/messages")}
-                                className={getNavButtonClass("messages")}
+                                onClick={() => handleNavigate("/renter/bills")}
+                                className={getNavButtonClass("bills")}
                             >
-                                <span>Messages</span>
+                                <span>Bills</span>
+                                <span>›</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => handleNavigate("/renter/roommates")}
+                                className={getNavButtonClass("roommates")}
+                            >
+                                <span>Roommates</span>
+                                <span>›</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => handleNavigate("/renter/chat")}
+                                className={getNavButtonClass("chat")}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <span>Chat</span>
+
+                                    {unreadChatCount > 0 && (
+                                        <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                                            {unreadChatCount}
+                                        </span>
+                                    )}
+                                </span>
+
                                 <span>›</span>
                             </button>
 
@@ -217,6 +292,7 @@ export default function RenterLayout() {
                     </main>
                 </div>
             </div>
+            <FloatingAssistantWidget role="renter" />
         </div>
     );
 }
