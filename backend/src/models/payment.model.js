@@ -19,6 +19,13 @@ const paymentSchema = new mongoose.Schema(
             required: true
         },
 
+        // Reference to the renter connected to this payment.
+        renter: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true
+        },
+
         renterName: {
             type: String,
             required: true,
@@ -75,7 +82,7 @@ const paymentSchema = new mongoose.Schema(
 );
 
 paymentSchema.index(
-    { property: 1, renterName: 1, month: 1, year: 1 },
+    { property: 1, renter: 1, month: 1, year: 1 },
     { unique: true }
 );
 

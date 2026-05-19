@@ -1,6 +1,7 @@
 const Payment = require("../models/payment.model");
 const Property = require("../models/property.model");
 const User = require("../models/user");
+const notificationService = require("./notification.service");
 
 /*
 Detect a simple payment risk pattern based on previous late payments.
@@ -46,7 +47,8 @@ async function generateMonthlyPayments(homeownerId, month, year) {
         };
     }
 
-    const properties = await Property.find({ homeowner: homeownerId });
+    const properties = await Property.find({ homeowner: homeownerId })
+        .populate("renters.renter", "firstName lastName email role");
 
     const createdPayments = [];
     const skippedPayments = [];
@@ -54,10 +56,24 @@ async function generateMonthlyPayments(homeownerId, month, year) {
     for (const property of properties) {
         const renters = property.renters || [];
 
-        for (const renterName of renters) {
+        for (const renterItem of renters) {
+            // Extract the populated renter user from the property renters array.
+            const renterUser = renterItem.renter;
+            const renterId = renterUser._id;
+
+            if (!renterUser) {
+                continue;
+            }
+
+            // Build a readable renter display name for the payment record.
+            const renterName =
+                `${renterUser.firstName || ""} ${renterUser.lastName || ""}`.trim() ||
+                renterUser.email ||
+                "Unknown Renter";
+
             const existingPayment = await Payment.findOne({
                 property: property._id,
-                renterName,
+                renter: renterId,
                 month,
                 year
             });
@@ -73,6 +89,7 @@ async function generateMonthlyPayments(homeownerId, month, year) {
             const payment = new Payment({
                 property: property._id,
                 homeowner: homeownerId,
+                renter: renterId,
                 renterName,
                 month,
                 year,
@@ -85,6 +102,16 @@ async function generateMonthlyPayments(homeownerId, month, year) {
 
             await payment.save();
             createdPayments.push(payment);
+
+            // Create an in-app notification when a monthly payment record is generated.
+            await notificationService.createNotification({
+                recipient: homeownerId,
+                sender: homeownerId,
+                property: property._id,
+                type: "payment_created",
+                title: "Monthly payment created",
+                message: `A monthly payment record was created for ${property.fullAddress}.`
+            });
         }
     }
 
@@ -127,7 +154,15 @@ async function getHomeownerPayments(homeownerId) {
 }
 
 /*
+Format payment status for notification messages.
+*/
+function formatPaymentStatus(status) {
+    return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+/*
 Update one payment status.
+Notifies the renter when the payment status changes.
 */
 async function updatePaymentStatus(paymentId, status) {
     const allowedStatuses = ["unpaid", "paid", "late"];
@@ -151,6 +186,8 @@ async function updatePaymentStatus(paymentId, status) {
         };
     }
 
+    const previousStatus = payment.status;
+
     payment.status = status;
     payment.paidAt = status === "paid" ? new Date() : null;
 
@@ -160,12 +197,26 @@ async function updatePaymentStatus(paymentId, status) {
 
     await payment.save();
 
+    if (previousStatus !== status && payment.renter) {
+        // Notify the renter when the payment status is updated.
+        await notificationService.createNotification({
+            recipient: payment.renter,
+            sender: payment.homeowner,
+            property: payment.property._id,
+            type: "payment_status_updated",
+            title: "Payment status updated",
+            message: `Your payment for ${payment.property.fullAddress} was marked as ${formatPaymentStatus(status)}. Billing day: ${payment.property.billingDate}.`
+        });
+    }
+    
     return {
         success: true,
         message: "Payment status updated successfully.",
         payment
     };
 }
+
+
 
 /*
 Get payment history for one renter.

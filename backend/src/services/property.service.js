@@ -2,6 +2,7 @@ const Property = require("../models/property.model");
 const User = require("../models/user");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
+const notificationService = require("./notification.service");
 
 /*
 Check if a value is a valid MongoDB ObjectId.
@@ -345,6 +346,8 @@ async function uploadContractToProperty(propertyId, contractData) {
         };
     }
 
+    const hadExistingContract = Boolean(property.contractFileName && property.contractFileUrl);
+
     if (property.contractFileName && property.contractFileUrl) {
         if (!property.contractHistory) {
             property.contractHistory = [];
@@ -365,6 +368,16 @@ async function uploadContractToProperty(propertyId, contractData) {
     property.contractUploadedBy = contractUploadedBy || "Unknown";
 
     await property.save();
+
+    await notificationService.createNotificationsForPropertyRenters({
+        propertyId: property._id,
+        sender: property.homeowner,
+        type: hadExistingContract ? "contract_updated" : "contract_uploaded",
+        title: hadExistingContract ? "Contract updated" : "New contract uploaded",
+        message: hadExistingContract
+            ? `The contract for ${property.fullAddress} was updated.`
+            : `A new contract was uploaded for ${property.fullAddress}.`
+    });
 
     return {
         success: true,

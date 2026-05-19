@@ -102,12 +102,138 @@ async function createPropertyInvitation(invitationData) {
 }
 
 /*
-Get all notifications for one renter.
+Create a notification for a homeowner when a renter opens a new issue.
 */
-async function getRenterNotifications(renterId) {
-    const notifications = await Notification.find({ recipient: renterId })
+async function createIssueCreatedNotification(notificationData) {
+    const {
+        homeownerId,
+        renterId,
+        propertyId,
+        issueId,
+        issueTitle,
+        propertyAddress
+    } = notificationData;
+
+    const notification = new Notification({
+        recipient: homeownerId,
+        sender: renterId,
+        property: propertyId,
+        issue: issueId,
+        type: "issue_created",
+        title: "New issue reported",
+        message: `A new issue was reported for ${propertyAddress}: ${issueTitle}.`,
+        invitationStatus: "pending"
+    });
+
+    await notification.save();
+
+    return {
+        success: true,
+        notification
+    };
+}
+
+/*
+Create a generic notification.
+Used for system events such as issue updates, contracts, and payments.
+*/
+async function createNotification(notificationData) {
+    const {
+        recipient,
+        sender,
+        property,
+        issue,
+        type,
+        title,
+        message
+    } = notificationData;
+
+    if (!recipient || !sender || !type || !title || !message) {
+        return {
+            success: false,
+            message: "Notification recipient, sender, type, title, and message are required."
+        };
+    }
+
+    const notification = new Notification({
+        recipient,
+        sender,
+        property: property || null,
+        issue: issue || null,
+        type,
+        title,
+        message
+    });
+
+    await notification.save();
+
+    return {
+        success: true,
+        notification
+    };
+}
+
+/*
+Create notifications for all renters linked to a property.
+*/
+async function createNotificationsForPropertyRenters(notificationData) {
+    const {
+        propertyId,
+        sender,
+        type,
+        title,
+        message,
+        issue
+    } = notificationData;
+
+    const property = await Property.findById(propertyId);
+
+    if (!property) {
+        return {
+            success: false,
+            message: "Property not found."
+        };
+    }
+
+    const createdNotifications = [];
+
+    for (const renterItem of property.renters || []) {
+        const renterId = renterItem.renter || renterItem;
+
+        if (!renterId) {
+            continue;
+        }
+
+        const result = await createNotification({
+            recipient: renterId,
+            sender,
+            property: property._id,
+            issue: issue || null,
+            type,
+            title,
+            message
+        });
+
+        if (result.success) {
+            createdNotifications.push(result.notification);
+        }
+    }
+
+    return {
+        success: true,
+        notifications: createdNotifications
+    };
+}
+
+/*
+Get all notifications for one user.
+Used by both Homeowner and Renter notification pages.
+*/
+async function getUserNotifications(userId) {
+    const notifications = await Notification.find({ recipient: userId })
         .populate("sender", "firstName lastName email role")
         .populate("property", "fullAddress monthlyRent billingDate rentalStartDate rentalEndDate")
+        .populate("issue", "title description status category priority aiSummary createdAt")
         .sort({ createdAt: -1 });
 
     return {
@@ -117,11 +243,18 @@ async function getRenterNotifications(renterId) {
 }
 
 /*
-Get unread notification count for one renter.
+Keep the old renter function name for existing frontend code.
 */
-async function getUnreadNotificationCount(renterId) {
+async function getRenterNotifications(renterId) {
+    return getUserNotifications(renterId);
+}
+
+/*
+Get unread notification count for one user.
+*/
+async function getUnreadNotificationCount(userId) {
     const count = await Notification.countDocuments({
-        recipient: renterId,
+        recipient: userId,
         isRead: false
     });
 
@@ -146,6 +279,40 @@ async function markNotificationAsRead(notificationId) {
 
     notification.isRead = true;
     await notification.save();
+
+    return {
+        success: true,
+        notification
+    };
+}
+
+/*
+Get one notification by id.
+*/
+async function getNotificationById(notificationId, userId) {
+    const notification = await Notification.findById(notificationId)
+        .populate("sender", "firstName lastName email role")
+        .populate("property", "fullAddress monthlyRent billingDate rentalStartDate rentalEndDate")
+        .populate("issue", "title description status category priority aiSummary createdAt");
+
+    if (!notification) {
+        return {
+            success: false,
+            message: "Notification not found."
+        };
+    }
+
+    if (notification.recipient.toString() !== userId.toString()) {
+        return {
+            success: false,
+            message: "This notification does not belong to this user."
+        };
+    }
+
+    if (!notification.isRead) {
+        notification.isRead = true;
+        await notification.save();
+    }
 
     return {
         success: true,
@@ -266,9 +433,14 @@ async function declinePropertyInvitation(notificationId, renterId) {
 
 module.exports = {
     createPropertyInvitation,
+    createIssueCreatedNotification,
+    createNotification,
+    createNotificationsForPropertyRenters,
+    getUserNotifications,
     getRenterNotifications,
     getUnreadNotificationCount,
     markNotificationAsRead,
+    getNotificationById,
     acceptPropertyInvitation,
     declinePropertyInvitation
 };

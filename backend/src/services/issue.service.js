@@ -1,7 +1,7 @@
 const Issue = require("../models/issue.model");
 const Property = require("../models/property.model");
 const User = require("../models/user");
-
+const notificationService = require("./notification.service");
 
 /*
 Analyze an issue using smart rule-based logic.
@@ -152,6 +152,17 @@ async function createIssue(issueData) {
 
     await newIssue.save();
 
+    if (createdByRenter) {
+        await notificationService.createIssueCreatedNotification({
+            homeownerId: property.homeowner,
+            renterId: createdByRenter,
+            propertyId: property._id,
+            issueId: newIssue._id,
+            issueTitle: newIssue.title,
+            propertyAddress: property.fullAddress
+        });
+    }
+
     const populatedIssue = await Issue.findById(newIssue._id)
         .populate("property", "fullAddress homeowner")
         .populate("createdByRenter", "firstName lastName email role");
@@ -244,7 +255,19 @@ async function getIssueById(issueId) {
 }
 
 /*
+Format issue status for notification messages.
+*/
+function formatIssueStatus(status) {
+    if (status === "in_progress") {
+        return "In Progress";
+    }
+
+    return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+/*
 Update the status of one issue.
+Creates a notification for the renter when the status changes.
 */
 async function updateIssueStatus(issueId, status) {
     const allowedStatuses = ["open", "in_progress", "closed"];
@@ -258,7 +281,7 @@ async function updateIssueStatus(issueId, status) {
 
     const issue = await Issue.findById(issueId).populate(
         "property",
-        "fullAddress homeowner"
+        "fullAddress homeowner renters"
     );
 
     if (!issue) {
@@ -268,8 +291,22 @@ async function updateIssueStatus(issueId, status) {
         };
     }
 
+    const previousStatus = issue.status;
+
     issue.status = status;
     await issue.save();
+
+    if (previousStatus !== status && issue.createdByRenter) {
+        await notificationService.createNotification({
+            recipient: issue.createdByRenter,
+            sender: issue.property.homeowner,
+            property: issue.property._id,
+            issue: issue._id,
+            type: "issue_status_updated",
+            title: "Issue status updated",
+            message: `The status of "${issue.title}" was updated to ${formatIssueStatus(status)}.`
+        });
+    }
 
     return {
         success: true,

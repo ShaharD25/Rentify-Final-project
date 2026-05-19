@@ -25,9 +25,26 @@ const notificationSchema = new mongoose.Schema(
             default: null
         },
 
+        issue: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Issue",
+            default: null
+        },
+
         type: {
             type: String,
-            enum: ["property_invitation"],
+            enum: [
+                "property_invitation",
+                "issue_created",
+                "issue_status_updated",
+                "contract_uploaded",
+                "contract_updated",
+                "payment_created",
+                "payment_late",
+                "payment_created",
+                "payment_late",
+                "payment_status_updated"
+            ],
             required: true
         },
 

@@ -71,7 +71,14 @@ const propertySchema = new mongoose.Schema(
             type: String,
             unique: true,
             sparse: true,
-            default: ""
+            default: null,
+            trim: true
+        },
+
+        // Expiration date for the current renter join code.
+        renterJoinCodeExpiresAt: {
+            type: Date,
+            default: null
         },
 
         // Contract file name stored for display in the property details page.

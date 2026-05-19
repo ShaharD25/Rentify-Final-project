@@ -27,6 +27,11 @@ const propertyRoutes = require("./routes/property.routes");
 const issueRoutes = require("./routes/issue.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const notificationRoutes = require("./routes/notification.routes");
+const chatRoutes = require("./routes/chat.routes");
+const billRoutes = require("./routes/bill.routes");
+const roommateRoutes = require("./routes/roommate.routes");
+const userRoutes = require("./routes/user.routes");
+const assistantRoutes = require("./routes/assistant.routes");
 
 
 const app = express();
@@ -41,6 +46,9 @@ app.use(express.json());
 // Serve uploaded issue images.
 app.use("/uploads/issues", express.static(path.join(__dirname, "..", "uploads", "issues")));
 
+// Serve uploaded chat files.
+app.use("/uploads/chat", express.static(path.join(__dirname, "..", "uploads", "chat")));
+
 // Log every incoming request
 app.use(logger);
 
@@ -51,6 +59,12 @@ app.use("/api", propertyRoutes);
 app.use("/api", issueRoutes);
 app.use("/api", paymentRoutes);
 app.use("/api", notificationRoutes);
+app.use("/api", chatRoutes);
+app.use("/api", billRoutes);
+app.use("/api", roommateRoutes);
+app.use("/api", userRoutes);
+app.use("/api", assistantRoutes);
+
 
 // Global error handler (must be after routes)
 app.use(errorHandler);
