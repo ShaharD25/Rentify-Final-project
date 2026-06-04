@@ -2,7 +2,7 @@ import pickle
 from pathlib import Path
 
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
 from sklearn.model_selection import train_test_split
@@ -12,6 +12,9 @@ from sklearn.preprocessing import StandardScaler
 
 # This script trains a payment late-risk prediction model for Rentify.
 # The model predicts whether a Renter has a high risk of late payment.
+# The script trains and compares three models:
+# Logistic Regression, Random Forest, and Gradient Boosting.
+# The best model is selected according to the F1 score.
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -100,8 +103,16 @@ def train_models():
         class_weight="balanced"
     )
 
+    gradient_boosting_model = GradientBoostingClassifier(
+        n_estimators=150,
+        learning_rate=0.05,
+        max_depth=3,
+        random_state=42
+    )
+
     logistic_regression_model.fit(x_train, y_train)
     random_forest_model.fit(x_train, y_train)
+    gradient_boosting_model.fit(x_train, y_train)
 
     logistic_results = evaluate_model(
         "Logistic Regression",
@@ -117,11 +128,20 @@ def train_models():
         y_test
     )
 
-    best_result = (
-        random_forest_results
-        if random_forest_results["f1"] >= logistic_results["f1"]
-        else logistic_results
+    gradient_boosting_results = evaluate_model(
+        "Gradient Boosting",
+        gradient_boosting_model,
+        x_test,
+        y_test
     )
+
+    all_results = [
+        logistic_results,
+        random_forest_results,
+        gradient_boosting_results
+    ]
+
+    best_result = max(all_results, key=lambda result: result["f1"])
 
     with open(MODEL_FILE, "wb") as model_file:
         pickle.dump(
