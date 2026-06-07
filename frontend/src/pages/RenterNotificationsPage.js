@@ -123,32 +123,38 @@ export default function RenterNotificationsPage() {
             return;
         }
 
-        if (
-            selectedNotification.type === "property_invitation" &&
-            selectedNotification.property?._id
-        ) {
-            navigate(`/renter/apartments/${selectedNotification.property._id}`);
+        const propertyId =
+            selectedNotification.property?._id || selectedNotification.property;
+
+        if (!propertyId) {
+            setPageMessage("No related property was found for this notification.");
             return;
         }
 
         if (
-            selectedNotification.type === "issue_status_updated" &&
-            selectedNotification.property?._id
+            selectedNotification.type === "issue_created" ||
+            selectedNotification.type === "issue_status_updated"
         ) {
-            navigate(`/renter/apartments/${selectedNotification.property._id}/issues`);
+            setSelectedNotification(null);
+            navigate(`/renter/apartments/${propertyId}/issues`);
             return;
         }
 
         if (
             selectedNotification.type === "contract_uploaded" ||
-            selectedNotification.type === "contract_updated"
+            selectedNotification.type === "contract_updated" ||
+            selectedNotification.type === "property_invitation" ||
+            selectedNotification.type === "payment_created" ||
+            selectedNotification.type === "payment_late" ||
+            selectedNotification.type === "payment_status_updated"
         ) {
-            if (selectedNotification.property?._id) {
-                navigate(`/renter/apartments/${selectedNotification.property._id}`);
-            }
+            setSelectedNotification(null);
+            navigate(`/renter/apartments/${propertyId}`);
+            return;
         }
 
-
+        setSelectedNotification(null);
+        navigate(`/renter/apartments/${propertyId}`);
     }
 
     // Accepts a property invitation notification.
