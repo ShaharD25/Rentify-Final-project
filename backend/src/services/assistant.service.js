@@ -4,6 +4,7 @@ const Property = require("../models/property.model");
 const Bill = require("../models/bill.model");
 const Chat = require("../models/chat.model");
 const User = require("../models/user");
+const aiService = require("./ai.service");
 
 /*
 Normalize user question for simple intent detection.
@@ -17,6 +18,50 @@ Format money values.
 */
 function formatMoney(amount) {
     return `₪${Number(amount || 0).toLocaleString()}`;
+}
+
+/*
+Calculate how many months passed between two dates.
+Used as a feature for the payment risk model.
+*/
+function calculateMonthsBetween(startDate, endDate) {
+    if (!startDate || !endDate) {
+        return 1;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const yearsDifference = end.getFullYear() - start.getFullYear();
+    const monthsDifference = end.getMonth() - start.getMonth();
+
+    return Math.max(1, yearsDifference * 12 + monthsDifference + 1);
+}
+
+/*
+Calculate delay days between due date and paid date.
+If the payment is late and has no paid date, use today's date.
+*/
+function calculateDelayDays(payment) {
+    if (!payment || !payment.dueDate) {
+        return 0;
+    }
+
+    const dueDate = new Date(payment.dueDate);
+    let compareDate = payment.paidAt ? new Date(payment.paidAt) : null;
+
+    if (!compareDate && payment.status === "late") {
+        compareDate = new Date();
+    }
+
+    if (!compareDate) {
+        return 0;
+    }
+
+    const differenceInMs = compareDate.getTime() - dueDate.getTime();
+    const differenceInDays = Math.ceil(differenceInMs / (1000 * 60 * 60 * 24));
+
+    return Math.max(0, differenceInDays);
 }
 
 /*
@@ -57,8 +102,19 @@ async function answerHomeownerPayments(homeownerId, question) {
     const lateCount = payments.filter((payment) => payment.status === "late").length;
     const riskCount = payments.filter((payment) => payment.riskFlag).length;
 
-    const paidIncome = payments
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const currentMonthPayments = payments.filter((payment) => {
+        return payment.month === currentMonth && payment.year === currentYear;
+    });
+
+    const currentMonthPaidIncome = currentMonthPayments
         .filter((payment) => payment.status === "paid")
+        .reduce((sum, payment) => sum + payment.amount, 0);
+
+    const currentMonthExpectedIncome = currentMonthPayments
         .reduce((sum, payment) => sum + payment.amount, 0);
 
     if (question.includes("late") || question.includes("risk") || question.includes("pattern")) {
@@ -85,20 +141,183 @@ async function answerHomeownerPayments(homeownerId, question) {
     }
 
     if (question.includes("income") || question.includes("revenue") || question.includes("money")) {
-        return buildResponse("Income summary", [
-            `Paid income total: ${formatMoney(paidIncome)}`,
-            `Paid records: ${paidCount}`,
-            `Unpaid records: ${unpaidCount}`,
-            `Late records: ${lateCount}`
-        ]);
-    }
-
+    return buildResponse("Monthly income summary", [
+        `Current month: ${currentMonth}/${currentYear}`,
+        `Expected monthly income: ${formatMoney(currentMonthExpectedIncome)}`,
+        `Paid income this month: ${formatMoney(currentMonthPaidIncome)}`,
+        `Paid records this month: ${currentMonthPayments.filter((payment) => payment.status === "paid").length}`,
+        `Unpaid records this month: ${currentMonthPayments.filter((payment) => payment.status === "unpaid").length}`,
+        `Late records this month: ${currentMonthPayments.filter((payment) => payment.status === "late").length}`
+    ]);
+}
     return buildResponse("Payment summary", [
         `Total payment records: ${payments.length}`,
         `Paid: ${paidCount}`,
         `Unpaid: ${unpaidCount}`,
         `Late: ${lateCount}`,
         `Risk flags: ${riskCount}`
+    ]);
+}
+
+/*
+Build payment risk model features for one Renter in one Property.
+*/
+async function buildPaymentRiskFeatures(payment, allPaymentsForRenterProperty) {
+    const property = payment.property;
+
+    const previousPayments = allPaymentsForRenterProperty.filter((currentPayment) => {
+        const currentDate = new Date(currentPayment.year, currentPayment.month - 1, 1);
+        const targetDate = new Date(payment.year, payment.month - 1, 1);
+
+        return currentDate < targetDate;
+    });
+
+    const previousLatePayments = previousPayments.filter(
+        (previousPayment) => previousPayment.status === "late"
+    );
+
+    const previousUnpaidPayments = previousPayments.filter(
+        (previousPayment) => previousPayment.status === "unpaid"
+    );
+
+    const previousOnTimePayments = previousPayments.filter(
+        (previousPayment) => previousPayment.status === "paid" && calculateDelayDays(previousPayment) === 0
+    );
+
+    const delayDays = previousPayments.map((previousPayment) => calculateDelayDays(previousPayment));
+    const delayDaysWithLatePayments = delayDays.filter((delay) => delay > 0);
+
+    const averageDelayDays =
+        delayDaysWithLatePayments.length > 0
+            ? delayDaysWithLatePayments.reduce((sum, delay) => sum + delay, 0) / delayDaysWithLatePayments.length
+            : 0;
+
+    const sortedPreviousPayments = [...previousPayments].sort((firstPayment, secondPayment) => {
+        const firstDate = new Date(firstPayment.year, firstPayment.month - 1, 1);
+        const secondDate = new Date(secondPayment.year, secondPayment.month - 1, 1);
+
+        return secondDate - firstDate;
+    });
+
+    const lastPaymentDelayDays =
+        sortedPreviousPayments.length > 0
+            ? calculateDelayDays(sortedPreviousPayments[0])
+            : 0;
+
+    const openIssues = await Issue.find({
+        property: property._id,
+        status: { $ne: "closed" }
+    });
+
+    const highPriorityIssues = openIssues.filter((issue) => {
+        return issue.priority === "high" || issue.priority === "High";
+    });
+
+    return {
+        monthly_rent: payment.amount || property.monthlyRent || 0,
+        billing_day: property.billingDate || new Date(payment.dueDate).getDate(),
+        months_in_property: calculateMonthsBetween(property.rentalStartDate, new Date()),
+        total_previous_payments: previousPayments.length,
+        previous_late_payments: previousLatePayments.length,
+        previous_unpaid_payments: previousUnpaidPayments.length,
+        previous_on_time_payments: previousOnTimePayments.length,
+        average_delay_days: Number(averageDelayDays.toFixed(2)),
+        last_payment_delay_days: lastPaymentDelayDays,
+        open_issues_count: openIssues.length,
+        high_priority_issues_count: highPriorityIssues.length,
+        contract_uploaded: property.contractFileName ? 1 : 0
+    };
+}
+
+/*
+Use the trained AI model to predict payment risk for Homeowner payments.
+*/
+async function answerHomeownerPaymentRiskWithModel(homeownerId) {
+    const payments = await Payment.find({ homeowner: homeownerId })
+        .populate("property", "fullAddress monthlyRent billingDate rentalStartDate contractFileName")
+        .populate("renter", "firstName lastName email")
+        .sort({ year: -1, month: -1, createdAt: -1 });
+
+    if (payments.length === 0) {
+        return buildResponse("Payment risk prediction", [
+            "No payment records were found for your properties."
+        ]);
+    }
+
+    const latestPaymentByRenterProperty = new Map();
+
+    payments.forEach((payment) => {
+        const key = `${payment.property?._id}-${payment.renter?._id}`;
+
+        if (!latestPaymentByRenterProperty.has(key)) {
+            latestPaymentByRenterProperty.set(key, payment);
+        }
+    });
+
+    const riskResults = [];
+
+    for (const latestPayment of latestPaymentByRenterProperty.values()) {
+        const relatedPayments = payments.filter((payment) => {
+            return (
+                payment.property?._id?.toString() === latestPayment.property?._id?.toString() &&
+                payment.renter?._id?.toString() === latestPayment.renter?._id?.toString()
+            );
+        });
+
+        const features = await buildPaymentRiskFeatures(latestPayment, relatedPayments);
+        const predictionResult = await aiService.predictPaymentRisk(features);
+
+        if (predictionResult.success) {
+            riskResults.push({
+                renterName: latestPayment.renterName,
+                propertyAddress: latestPayment.property?.fullAddress || "Unknown property",
+                riskLabel: predictionResult.riskLabel,
+                riskProbability: predictionResult.riskProbability,
+                riskReason: predictionResult.riskReason
+            });
+        }
+    }
+
+    const sortedRiskResults = riskResults.sort((firstResult, secondResult) => {
+        return secondResult.riskProbability - firstResult.riskProbability;
+    });
+
+    const highAndMediumRiskResults = sortedRiskResults.filter((result) => {
+        return result.riskLabel === "High Risk" || result.riskLabel === "Medium Risk";
+    });
+
+    if (highAndMediumRiskResults.length === 0) {
+        return buildResponse("Payment risk prediction", [
+            "The AI model did not detect high or medium payment risk at the moment.",
+            `Renter payment profiles checked: ${riskResults.length}.`
+        ]);
+    }
+
+    const previewLines = highAndMediumRiskResults.slice(0, 5).flatMap((result) => {
+        const probability = `${(result.riskProbability * 100).toFixed(1)}%`;
+
+        const cleanedReasons = result.riskReason
+            .replace(/^Risk probability is .*? Main factors: /, "")
+            .replace("multiple previous late payments", "late payment history")
+            .replace("previous unpaid payments", "unpaid payments")
+            .replace("high average delay days", "high average delay")
+            .replace("recent payment delay", "recent late payment")
+            .replace("high priority open issues", "open high-priority issues")
+            .replace("missing uploaded contract", "missing contract")
+            .replace("stable payment history", "stable payment history");
+
+        return [
+            `${result.renterName} - ${result.propertyAddress}`,
+            `${result.riskLabel}: ${probability}`,
+            `Reasons: ${cleanedReasons}.`
+        ];
+    });
+
+    return buildResponse("AI payment risk prediction", [
+        `Renter payment profiles checked: ${riskResults.length}.`,
+        `Medium or high risk profiles found: ${highAndMediumRiskResults.length}.`,
+        "Top risk predictions:",
+        ...previewLines
     ]);
 }
 
@@ -230,6 +449,64 @@ async function answerRenterIssues(renterId) {
 }
 
 /*
+Route Homeowner assistant intent to the correct data module.
+*/
+async function answerHomeownerByIntent(userId, question, intent) {
+    const normalizedQuestion = normalizeQuestion(question);
+
+    if (intent === "payment_risk") {
+        return answerHomeownerPaymentRiskWithModel(userId);
+    }
+
+    if (intent === "payments_summary") {
+        return answerHomeownerPayments(userId, normalizedQuestion);
+    }
+
+    if (intent === "issues_summary" || intent === "recurring_issues") {
+        return answerHomeownerIssues(userId, normalizedQuestion);
+    }
+
+    if (intent === "general_help") {
+        return buildResponse("Assistant help", [
+            "You can ask me about:",
+            "Payment risk, payment status, income summary.",
+            "Open issues, recurring problems and maintenance trends.",
+            "Example: Which Renters may pay late next month?"
+        ]);
+    }
+
+    return answerHomeownerTrends(userId);
+}
+
+/*
+Route Renter assistant intent to the correct data module.
+*/
+async function answerRenterByIntent(userId, question, intent) {
+    const normalizedQuestion = normalizeQuestion(question);
+
+    if (intent === "bills_summary" || intent === "unusual_bills") {
+        return answerRenterBills(userId, normalizedQuestion);
+    }
+
+    if (intent === "issues_summary" || intent === "recurring_issues") {
+        return answerRenterIssues(userId);
+    }
+
+    if (intent === "general_help") {
+        return buildResponse("Assistant help", [
+            "You can ask me about:",
+            "Apartment bills, unusual expenses and shared costs.",
+            "Apartment issues and maintenance status.",
+            "Example: Are there any unusual bills?"
+        ]);
+    }
+
+    return buildResponse("Assistant help", [
+        "I can help with bills, unusual expenses, apartment issues and rental information."
+    ]);
+}
+
+/*
 Answer a Homeowner assistant question.
 */
 async function answerHomeownerQuestion(userId, question) {
@@ -323,12 +600,24 @@ async function askAssistant(assistantData) {
         };
     }
 
+    let detectedIntent = "general_help";
+
+    try {
+        const intentResult = await aiService.classifyIntent(question);
+
+        if (intentResult.success && intentResult.intent) {
+            detectedIntent = intentResult.intent;
+        }
+    } catch (error) {
+        console.error("AI intent classification failed:", error.message);
+    }
+
     if (role === "homeowner") {
-        return answerHomeownerQuestion(userId, question);
+        return answerHomeownerByIntent(userId, question, detectedIntent);
     }
 
     if (role === "renter") {
-        return answerRenterQuestion(userId, question);
+        return answerRenterByIntent(userId, question, detectedIntent);
     }
 
     return {
@@ -405,7 +694,7 @@ async function generateChatReplySuggestions(propertyId, userId, role) {
             ]
         };
     }
-
+    כ
     if (
         latestText.includes("payment") ||
         latestText.includes("paid") ||
