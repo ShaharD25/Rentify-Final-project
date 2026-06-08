@@ -66,6 +66,16 @@ app.use("/api", userRoutes);
 app.use("/api", assistantRoutes);
 
 
+// Serve React production build.
+app.use(express.static(path.join(__dirname, "../../frontend/build")));
+
+// React fallback route.
+// This allows direct navigation to frontend routes.
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, "../../frontend/build", "index.html"));
+});
+
+
 // Global error handler (must be after routes)
 app.use(errorHandler);
 

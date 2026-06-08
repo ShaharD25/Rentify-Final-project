@@ -110,9 +110,6 @@ export default function HomeownerLayout() {
             return currentPath.startsWith("/homeowner/payments");
         }
 
-        if (routeKey === "maintenance") {
-            return currentPath.startsWith("/homeowner/maintenance");
-        }
 
         if (routeKey === "chat") {
             return currentPath.startsWith("/homeowner/chat") ||
@@ -214,15 +211,7 @@ export default function HomeownerLayout() {
                                 <span>›</span>
                             </button>
 
-                            <button
-                                type="button"
-                                onClick={() => handleNavigate("/homeowner/maintenance")}
-                                className={getNavButtonClass("maintenance")}
-                            >
-                                <span>Maintenance</span>
-                                <span>›</span>
-                            </button>
-
+                            
                             <button
                                 type="button"
                                 onClick={() => handleNavigate("/homeowner/chat")}
