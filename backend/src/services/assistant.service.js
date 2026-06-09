@@ -694,7 +694,7 @@ async function generateChatReplySuggestions(propertyId, userId, role) {
             ]
         };
     }
-    כ
+    
     if (
         latestText.includes("payment") ||
         latestText.includes("paid") ||
