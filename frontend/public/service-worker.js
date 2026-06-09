@@ -1,16 +1,13 @@
-/* eslint-env serviceworker */
-/* eslint-disable no-restricted-globals */
-
 const CACHE_NAME = "rentify-pwa-cache-v3";
 
 const urlsToCache = [
     "/",
     "/manifest.json",
     "/favicon.ico",
-    "/apple-touch-icon.png",
-    "/rentify-icon.png",
+"/apple-touch-icon.png",
+"/rentify-icon.png",
     "/rentify192.png",
-    "/rentify512.png"
+"/rentify512.png"
 ];
 
 self.addEventListener("install", (event) => {
