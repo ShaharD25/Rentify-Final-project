@@ -90,6 +90,52 @@ async function getHomeownerPropertyIds(homeownerId) {
 }
 
 /*
+Answer which Renter or Property has the highest monthly rent.
+*/
+async function answerHighestPayingRenter(homeownerId) {
+    const properties = await Property.find({ homeowner: homeownerId })
+        .populate("renters.renter", "firstName lastName email")
+        .sort({ monthlyRent: -1 });
+
+    if (properties.length === 0) {
+        return buildResponse("Highest monthly rent", [
+            "No properties were found for this Homeowner."
+        ]);
+    }
+
+    const propertiesWithRent = properties.filter((property) => {
+        return Number(property.monthlyRent || 0) > 0;
+    });
+
+    if (propertiesWithRent.length === 0) {
+        return buildResponse("Highest monthly rent", [
+            "No monthly rent values were found for your properties."
+        ]);
+    }
+
+    const highestProperty = propertiesWithRent[0];
+
+    const renterNames = (highestProperty.renters || [])
+        .map((renterEntry) => {
+            const renter = renterEntry.renter;
+
+            if (!renter) {
+                return null;
+            }
+
+            return `${renter.firstName || ""} ${renter.lastName || ""}`.trim() || renter.email;
+        })
+        .filter(Boolean);
+
+    return buildResponse("Highest monthly rent", [
+        `The highest monthly rent is ${formatMoney(highestProperty.monthlyRent)}.`,
+        `Property: ${highestProperty.fullAddress}.`,
+        `Renter${renterNames.length > 1 ? "s" : ""}: ${renterNames.length > 0 ? renterNames.join(", ") : "No renters assigned."}`,
+        "Note: Monthly rent is stored per property, so if there are roommates, this is the total rent for the apartment."
+    ]);
+}
+
+/*
 Answer Homeowner payment-related questions.
 */
 async function answerHomeownerPayments(homeownerId, question) {
@@ -117,6 +163,17 @@ async function answerHomeownerPayments(homeownerId, question) {
     const currentMonthExpectedIncome = currentMonthPayments
         .reduce((sum, payment) => sum + payment.amount, 0);
 
+    if (
+        question.includes("highest") ||
+        question.includes("most") ||
+        question.includes("largest") ||
+        question.includes("top renter") ||
+        question.includes("paying the highest") ||
+        question.includes("pays the most")
+    ) {
+        return answerHighestPayingRenter(homeownerId);
+    }
+
     if (question.includes("late") || question.includes("risk") || question.includes("pattern")) {
         const latePayments = payments.filter((payment) => payment.status === "late" || payment.riskFlag);
 
@@ -141,15 +198,15 @@ async function answerHomeownerPayments(homeownerId, question) {
     }
 
     if (question.includes("income") || question.includes("revenue") || question.includes("money")) {
-    return buildResponse("Monthly income summary", [
-        `Current month: ${currentMonth}/${currentYear}`,
-        `Expected monthly income: ${formatMoney(currentMonthExpectedIncome)}`,
-        `Paid income this month: ${formatMoney(currentMonthPaidIncome)}`,
-        `Paid records this month: ${currentMonthPayments.filter((payment) => payment.status === "paid").length}`,
-        `Unpaid records this month: ${currentMonthPayments.filter((payment) => payment.status === "unpaid").length}`,
-        `Late records this month: ${currentMonthPayments.filter((payment) => payment.status === "late").length}`
-    ]);
-}
+        return buildResponse("Monthly income summary", [
+            `Current month: ${currentMonth}/${currentYear}`,
+            `Expected monthly income: ${formatMoney(currentMonthExpectedIncome)}`,
+            `Paid income this month: ${formatMoney(currentMonthPaidIncome)}`,
+            `Paid records this month: ${currentMonthPayments.filter((payment) => payment.status === "paid").length}`,
+            `Unpaid records this month: ${currentMonthPayments.filter((payment) => payment.status === "unpaid").length}`,
+            `Late records this month: ${currentMonthPayments.filter((payment) => payment.status === "late").length}`
+        ]);
+    }
     return buildResponse("Payment summary", [
         `Total payment records: ${payments.length}`,
         `Paid: ${paidCount}`,
@@ -392,6 +449,52 @@ async function answerRenterBills(renterId, question) {
 
     const totalAmount = bills.reduce((sum, bill) => sum + bill.amount, 0);
     const unusualBills = bills.filter((bill) => bill.isUnusual);
+    const billCategories = [
+        "electricity",
+        "water",
+        "internet",
+        "gas",
+        "arnona",
+        "hoa",
+        "maintenance",
+        "other"
+    ];
+
+    const requestedCategory = billCategories.find((category) => {
+        return question.includes(category);
+    });
+
+    if (requestedCategory) {
+        const filteredBills = bills.filter((bill) => {
+            return bill.category === requestedCategory;
+        });
+
+        if (filteredBills.length === 0) {
+            return buildResponse(`${requestedCategory} bills`, [
+                `No ${requestedCategory} bills were found for your apartment.`
+            ]);
+        }
+
+        const preview = filteredBills.slice(0, 8).map((bill) => {
+            const propertyAddress = bill.property?.fullAddress || "Unknown property";
+            const dueDate = bill.dueDate
+                ? new Date(bill.dueDate).toLocaleDateString("en-GB")
+                : "No due date";
+
+            return `${dueDate} - ${propertyAddress} - ${formatMoney(bill.amount)}${bill.isUnusual ? " - Unusual" : ""}`;
+        });
+
+        const totalForCategory = filteredBills.reduce((sum, bill) => {
+            return sum + bill.amount;
+        }, 0);
+
+        return buildResponse(`${requestedCategory} bills`, [
+            `Total ${requestedCategory} bills: ${filteredBills.length}`,
+            `Total amount: ${formatMoney(totalForCategory)}`,
+            "Recent bills:",
+            ...preview
+        ]);
+    }
 
     const categoryTotals = bills.reduce((totals, bill) => {
         totals[bill.category] = (totals[bill.category] || 0) + bill.amount;
@@ -694,7 +797,7 @@ async function generateChatReplySuggestions(propertyId, userId, role) {
             ]
         };
     }
-    
+
     if (
         latestText.includes("payment") ||
         latestText.includes("paid") ||
