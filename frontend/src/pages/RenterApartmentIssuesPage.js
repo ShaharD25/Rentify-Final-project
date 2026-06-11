@@ -15,7 +15,7 @@ export default function RenterApartmentIssuesPage() {
 
     const [apartment, setApartment] = useState(null);
     const [issues, setIssues] = useState([]);
-    const [statusFilter, setStatusFilter] = useState("all");
+    const [statusFilter, setStatusFilter] = useState("active");
     const [isLoading, setIsLoading] = useState(true);
     const [pageMessage, setPageMessage] = useState("");
     const [visibleIssuesCount, setVisibleIssuesCount] = useState(3);
@@ -82,8 +82,8 @@ export default function RenterApartmentIssuesPage() {
     }
 
     const filteredIssues =
-        statusFilter === "all"
-            ? issues
+        statusFilter === "active"
+            ? issues.filter((issue) => issue.status !== "closed")
             : issues.filter((issue) => issue.status === statusFilter);
 
     const visibleIssues = filteredIssues.slice(0, visibleIssuesCount);
@@ -138,10 +138,10 @@ export default function RenterApartmentIssuesPage() {
                     }}
                     className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#FF8A00] focus:ring-4 focus:ring-orange-100 sm:w-64"
                 >
-                    <option value="all">All statuses</option>
+                    <option value="active">Active issues</option>
                     <option value="open">Open</option>
                     <option value="in_progress">In Progress</option>
-                    <option value="closed">Closed</option>
+                    <option value="closed">Issue history</option>
                 </select>
             </section>
 

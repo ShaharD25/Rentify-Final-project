@@ -69,8 +69,11 @@ export default function IssuesPage() {
         return category.charAt(0).toUpperCase() + category.slice(1);
     }
 
-    const visibleIssues = issues.slice(0, visibleIssuesCount);
-    const hasMoreIssues = issues.length > visibleIssues.length;
+    const activeIssues = issues.filter((issue) => issue.status !== "closed");
+    const closedIssues = issues.filter((issue) => issue.status === "closed");
+
+    const visibleIssues = activeIssues.slice(0, visibleIssuesCount);
+    const hasMoreIssues = activeIssues.length > visibleIssues.length;
 
     return (
         <div className="min-h-screen bg-[#FFE8D6] px-4 py-6 sm:px-6 sm:py-10">
@@ -107,7 +110,7 @@ export default function IssuesPage() {
                     <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-12 text-center shadow-sm">
                         <p className="text-sm font-medium text-red-600">{pageMessage}</p>
                     </div>
-                ) : issues.length === 0 ? (
+                ) : activeIssues.length === 0 && closedIssues.length === 0 ? (
                     <div className="rounded-3xl border border-dashed border-orange-200 bg-[#FFF8F3]/95 px-6 py-12 text-center shadow-sm">
                         <h3 className="text-xl font-bold text-gray-900">No issues yet</h3>
                         <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">
@@ -204,14 +207,56 @@ export default function IssuesPage() {
                                 <div className="mt-6 text-center">
                                     <button
                                         type="button"
-                                        onClick={() => setVisibleIssuesCount(issues.length)}
+                                        onClick={() => setVisibleIssuesCount(activeIssues.length)}
                                         className="rounded-2xl border border-orange-200 bg-[#FFF8F3] px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50"
                                     >
-                                        View all issues 
+                                        View all issues
                                     </button>
                                 </div>
                             )}
                         </div>
+                        {closedIssues.length > 0 && (
+                            <section className="mt-8 rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 shadow-sm">
+                                <h2 className="text-xl font-bold text-gray-900">
+                                    Issue history
+                                </h2>
+
+                                <p className="mt-1 text-sm text-gray-600">
+                                    Closed issues are kept here for documentation.
+                                </p>
+
+                                <div className="mt-5 space-y-3">
+                                    {closedIssues.map((issue) => (
+                                        <button
+                                            key={issue._id}
+                                            type="button"
+                                            onClick={() => navigate(`/homeowner/issues/${issue._id}`)}
+                                            className="w-full rounded-2xl border border-orange-100 bg-white p-4 text-left transition hover:bg-orange-50"
+                                        >
+                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                                <div>
+                                                    <h3 className="text-sm font-bold text-gray-900">
+                                                        {issue.title}
+                                                    </h3>
+
+                                                    <p className="mt-1 text-sm text-gray-600">
+                                                        {issue.property?.fullAddress || "Property not available"}
+                                                    </p>
+                                                </div>
+
+                                                <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+                                                    Closed
+                                                </span>
+                                            </div>
+
+                                            <p className="mt-2 text-xs text-gray-500">
+                                                Created: {new Date(issue.createdAt).toLocaleString()}
+                                            </p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
                     </>
                 )}
             </div>

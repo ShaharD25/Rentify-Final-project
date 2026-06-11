@@ -4,7 +4,7 @@ Allows a homeowner to track monthly rent payments, update statuses,
 view renter history, and see basic income analytics.
 */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     generateMonthlyPayments,
     getHomeownerPayments,
@@ -22,6 +22,7 @@ export default function PaymentsPage() {
     const [pageMessage, setPageMessage] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
+    const historySectionRef = useRef(null);
 
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1;
@@ -123,6 +124,13 @@ export default function PaymentsPage() {
 
             if (result.success) {
                 setRenterHistory(result.payments || []);
+
+                setTimeout(() => {
+                    historySectionRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start"
+                    });
+                }, 100);
             } else {
                 setPageMessage(result.message || "Failed to load renter history.");
             }
@@ -156,12 +164,16 @@ export default function PaymentsPage() {
             ? payments
             : payments.filter((payment) => payment.status === selectedStatusFilter);
 
-    const totalPaidIncome = payments
+    const currentMonthPayments = payments.filter((payment) => {
+        return payment.month === currentMonth && payment.year === currentYear;
+    });
+
+    const totalPaidIncome = currentMonthPayments
         .filter((payment) => payment.status === "paid")
         .reduce((sum, payment) => sum + payment.amount, 0);
 
-    const unpaidCount = payments.filter((payment) => payment.status === "unpaid").length;
-    const lateCount = payments.filter((payment) => payment.status === "late").length;
+    const unpaidCount = currentMonthPayments.filter((payment) => payment.status === "unpaid").length;
+    const lateCount = currentMonthPayments.filter((payment) => payment.status === "late").length;
 
     return (
         <div className="px-4 py-6 sm:px-6 lg:px-8">
@@ -195,7 +207,7 @@ export default function PaymentsPage() {
             <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 shadow-sm">
                     <p className="text-sm font-medium text-gray-500">
-                        Paid income
+                        Paid income this month
                     </p>
                     <h3 className="mt-3 text-3xl font-bold text-gray-900">
                         ₪{totalPaidIncome}
@@ -359,7 +371,10 @@ export default function PaymentsPage() {
                 )}
             </section>
 
-            <section className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <section
+                ref={historySectionRef}
+                className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2"
+            >
                 <div className="rounded-3xl border border-orange-100 bg-[#FFF8F3]/95 p-5 shadow-sm">
                     <h2 className="text-xl font-bold text-gray-900">
                         Renter payment history
