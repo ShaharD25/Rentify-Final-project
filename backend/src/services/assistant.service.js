@@ -587,11 +587,53 @@ Route Renter assistant intent to the correct data module.
 async function answerRenterByIntent(userId, question, intent) {
     const normalizedQuestion = normalizeQuestion(question);
 
-    if (intent === "bills_summary" || intent === "unusual_bills") {
+    const billKeywords = [
+        "bill",
+        "bills",
+        "expense",
+        "expenses",
+        "cost",
+        "costs",
+        "electricity",
+        "water",
+        "internet",
+        "gas",
+        "arnona",
+        "hoa",
+        "maintenance"
+    ];
+
+    const issueKeywords = [
+        "issue",
+        "issues",
+        "problem",
+        "problems",
+        "repair",
+        "repairs",
+        "maintenance request"
+    ];
+
+    const hasBillKeyword = billKeywords.some((keyword) => {
+        return normalizedQuestion.includes(keyword);
+    });
+
+    const hasIssueKeyword = issueKeywords.some((keyword) => {
+        return normalizedQuestion.includes(keyword);
+    });
+
+    if (
+        hasBillKeyword ||
+        intent === "bills_summary" ||
+        intent === "unusual_bills"
+    ) {
         return answerRenterBills(userId, normalizedQuestion);
     }
 
-    if (intent === "issues_summary" || intent === "recurring_issues") {
+    if (
+        hasIssueKeyword ||
+        intent === "issues_summary" ||
+        intent === "recurring_issues"
+    ) {
         return answerRenterIssues(userId);
     }
 
